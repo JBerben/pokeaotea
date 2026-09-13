@@ -38,6 +38,8 @@ in which the player moves.
 ## What's in this directory?
 
 - [maps.md](maps.md): a general overview of maps
+- [editing_map_headers.md](editing_map_headers.md): where the map header table
+  lives, how IDs are numbered, and which file to edit for a given change
 - [bdhc.md](bdhc.md): an overview of the BDHC subsystem, which is used to provide
   height information on maps
 - [loading_maps.md](loading_maps.md): an overview of how maps are loaded by the game

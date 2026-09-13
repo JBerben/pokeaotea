@@ -8,6 +8,10 @@ For more detailed information about the project as a whole, please refer to its
 - [Visual Studio Code](./editor_setup/visual_studio_code.md)
 - [Neovim](./editor_setup/neovim.md)
 
+## Building the hack
+
+- [Checksums and Blessing](checksums_and_blessing.md)
+
 ## Issues with the source code
 
 - [Fixes for Various Bugs and Glitches](bugs_and_glitches.md)
@@ -25,6 +29,9 @@ For more detailed information about the project as a whole, please refer to its
 
 - [2D Graphics](2d_rendering.md)
 - [3D Graphics](3d_rendering.md)
+- [Replacing 3D Models](replacing_3d_models.md)
+- [Maps](maps/README.md)
+  - [Editing Map Headers](maps/editing_map_headers.md)
 
 ## Utilities
 
