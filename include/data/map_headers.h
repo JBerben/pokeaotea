@@ -9084,7 +9084,7 @@ static const MapHeader sMapHeaders[] = {
         .isFlyAllowed = FALSE,
     },
     [MAP_HEADER_TWINLEAF_TOWN] = {
-        .areaDataArchiveID = area_data_006,
+        .areaDataArchiveID = area_data_075,
         .preloadedMapObjectsArchiveID = 0x0,
         .mapMatrixID = map_matrix_000,
         .scriptsArchiveID = scripts_twinleaf_town,
