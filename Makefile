@@ -1,6 +1,7 @@
 # Keep this list in alphabetical order for ease of reference.
 .PHONY:           \
 	all           \
+	bless         \
 	check         \
 	clean         \
 	configure     \
@@ -21,14 +22,21 @@
 
 ROM_REVISION ?= 1
 
+# A release build re-blesses the SHA-1 manifests for ROM_REVISION once the ROM
+# is built, so `make check` always reflects the current sources. Set BLESS=0 to
+# build without touching them (e.g. to verify a build still matches upstream).
+BLESS ?= 1
+
 SUBPROJ_DIR := subprojects
 
 MESON_VER := 1.12.0
 MESON_DIR := $(SUBPROJ_DIR)/meson-$(MESON_VER)
+MESON_SUB := $(MESON_DIR)/meson.py
 
-MESON ?= $(MESON_DIR)/meson.py
+MESON ?= $(MESON_SUB)
 NINJA ?= ninja
 GIT ?= git
+PYTHON ?= python3
 
 BUILD ?= build
 
@@ -47,7 +55,7 @@ else
   WSL_ACCESSING_WINDOWS := 1
 endif
 
-# Set up the compiler toolchain dependency
+# Set up the compiler toolchain dependency 
 SKREW_GET := tools/devtools/get_metroskrew.sh
 SKREW_VER := 0.1.3
 SKREW_DIR := tools/metroskrew
@@ -87,11 +95,17 @@ endif
 
 export NINJA_STATUS := [%p %f/%t] 
 
-# Modders can delete the `check` dependency here after their first build.
-all: release check
+# The checksum tests are not part of `all`; run `make check` to compare the
+# build against the blessed hashes. `make bless` records the current build's
+# hashes as the new expected ones, and a release build does it automatically.
+all: release
 
 .NOTPARALLEL: release
 release: setup_release rom
+ifneq ($(BLESS),0)
+# Appending keeps this after `rom`, so the ROM exists by the time it runs.
+release: bless
+endif
 
 .NOTPARALLEL: debug
 debug: setup_debug rom
@@ -99,6 +113,9 @@ debug: setup_debug rom
 
 check: rom
 	$(MESON) test -C $(BUILD)
+
+bless: rom
+	$(PYTHON) tools/scripts/update_checksums.py -C $(BUILD)
 
 rom: $(BUILD)/build.ninja
 	$(NINJA) -C $(BUILD) pokeplatinum.us.nds
@@ -118,8 +135,12 @@ distclean:
 
 purge: distclean
 	rm -rf $(SKREW_DIR)
+ifeq ($(MESON),$(MESON_SUB))
 	! test -f $(MESON) || $(MESON) subprojects purge --confirm
 	rm -rf $(MESON_DIR)
+else
+	$(MESON) subprojects purge --confirm
+endif
 
 update: meson skrewup
 	$(MESON) subprojects update || true
@@ -143,9 +164,12 @@ $(BUILD)/build.ninja: | $(BUILD) $(SKREW_EXE) meson
 $(BUILD):
 	mkdir -p -- $(BUILD)
 
-meson: $(MESON)
+meson: ;
+ifeq ($(MESON),$(MESON_SUB))
+meson: $(MESON_SUB)
+endif
 
-$(MESON):
+$(MESON_SUB):
 	$(GIT) clone --depth=1 -b $(MESON_VER) https://github.com/mesonbuild/meson $(@D)
 
 skrew: $(SKREW_EXE)

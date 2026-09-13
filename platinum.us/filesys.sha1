@@ -194,7 +194,7 @@ f0dd678b1de5b9231ffad99f207085a1dab37491 *res/prebuilt/graphic/bucket.narc
 937807f1632664139194b95e3f7b8a58ac33f89a *res/prebuilt/graphic/demo_trade.narc
 67a8fb6c1b269ab107f2a98f23a5f53fb383ca1d *res/prebuilt/graphic/dendou_demo.narc
 d5a8953a61b8589539ce7b139ab956a802adaa33 *res/prebuilt/graphic/dendou_pc.narc
-2d1a354e31cdd1861bdd7aade661fb9e4dc0ae31 *res/graphics/end_credits/ending.narc
+2d1a354e31cdd1861bdd7aade661fb9e4dc0ae31 *res/prebuilt/graphic/ending.narc
 d91ceca1e3ef5e57061dabc690c0f1a1556dc624 *res/prebuilt/graphic/ev_pokeselect.narc
 5c673be62fe6bddfa911e3be26762b7e47d60b41 *res/prebuilt/graphic/f_note_gra.narc
 4941a639804c2b009836d1ab9b86a2ab0bb0c436 *res/graphics/signposts/field_board.narc
@@ -262,12 +262,12 @@ d9bf534c175c3c991e77fff985c099723499e1eb *res/field/encounters/pl_enc_data.narc
 7eca91aaa5f7ef816f51a884e2f42a26f51f8bbd *res/field/props/models/prop_models.narc
 f49c6992b8caf5fea13831789fe4bfb026beb967 *res/prebuilt/fielddata/build_model/build_model_matshp.dat
 992f33f6450613066830606d28e94b91031caddb *res/field/matrices/map_matrix.narc
-2df833d8f0145f29f21b23c06ba3561dec3f5180 *res/field/area_data/area_data.narc
+ef6d2ff28be455119bd3c9c52c38e45b38909549 *res/field/area_data/area_data.narc
 a2cd6f636960544440b489e827e5e16dcaa7f014 *res/field/props/model_sets/prop_model_sets.narc
 8174da67845c24f377f56e84a0f5f0e890e765ec *res/field/props/texture_sets/prop_texture_sets.narc
-74aded294b971d68f10554f86fd795b072a0b01f *res/field/maps/texture_sets/map_tex_set.narc
+6d1172fba137578c74637e2772f2d29f09bdb39e *res/field/maps/texture_sets/map_tex_set.narc
 2fb9b73d29f2577fdbd385daf961749794969d72 *res/prebuilt/fielddata/areadata/area_move_model/move_model_list.narc
-fa044bf2e0599ed2bf42d3b632776af3b7e8452e *res/field/maps/data/land_data.narc
+79bcb107b8f687d98ca7994c784f27204ec2cfbe *res/field/maps/data/land_data.narc
 f477dce1ffaf2db070ef0f31f422b51433463485 *res/prebuilt/contest/data/contest_data.narc
 e03ff29bc200e233217ad7a8f068ec77b33e6472 *res/prebuilt/particledata/particledata.narc
 5ab40a1a509372d16f6e3b678820c0932cce9d03 *res/pokemon/zukan_data.narc
