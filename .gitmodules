@@ -1,0 +1,3 @@
+[submodule "subprojects/scrcmd-database"]
+	path = subprojects/scrcmd-database
+	url = https://github.com/DS-Pokemon-Rom-Editor/scrcmd-database.git
