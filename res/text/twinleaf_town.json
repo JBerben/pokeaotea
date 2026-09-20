@@ -116,6 +116,25 @@
     {
       "id": "TwinleafTown_Text_RivalsHouse",
       "en_US": "{STRVAR_1 3, 0, 0}’s House"
+    },
+    {
+      "id": "TwinleafTown_Text_NothingEverHappensHere",
+      "en_US": [
+        "Twinleaf’s a quiet little town.\n",
+        "Nothing ever happens around here.\r",
+        "Just the wind in the grass and the\n",
+        "water lapping at the shore."
+      ]
+    },
+    {
+      "id": "TwinleafTown_Text_YoureATrainerNow",
+      "en_US": [
+        "Well now! You’ve gone and become\n",
+        "a real Trainer, haven’t you?\r",
+        "Twinleaf’s a quiet little place, but it\n",
+        "sends out some fine Trainers.\f",
+        "Good luck out there!"
+      ]
     }
   ]
 }

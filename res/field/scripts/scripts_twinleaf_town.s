@@ -12,6 +12,7 @@
     ScriptEntry TwinleafTown_MapSignpost
     ScriptEntry TwinleafTown_MailboxPlayer
     ScriptEntry TwinleafTown_MailboxRival
+    ScriptEntry TwinleafTown_Rancher
     ScriptEntryEnd
 
 TwinleafTown_OnTransition:
@@ -510,6 +511,26 @@ TwinleafTown_MailboxPlayer:
 TwinleafTown_MailboxRival:
     BufferRivalName 0
     ShowLandmarkSign TwinleafTown_Text_RivalsHouse
+    End
+
+    .balign 4, 0
+
+TwinleafTown_Rancher:
+    PlaySE SE_CONFIRM_sseq_3
+    LockAll
+    FacePlayer
+    GoToIfSet FLAG_HAS_POKEDEX, TwinleafTown_RancherYoureATrainerNow
+    Message TwinleafTown_Text_NothingEverHappensHere
+    WaitButton
+    CloseMessage
+    ReleaseAll
+    End
+
+TwinleafTown_RancherYoureATrainerNow:
+    Message TwinleafTown_Text_YoureATrainerNow
+    WaitButton
+    CloseMessage
+    ReleaseAll
     End
 
     .balign 4, 0

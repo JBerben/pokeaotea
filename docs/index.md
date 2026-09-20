@@ -32,6 +32,11 @@ For more detailed information about the project as a whole, please refer to its
 - [Replacing 3D Models](replacing_3d_models.md)
 - [Maps](maps/README.md)
   - [Editing Map Headers](maps/editing_map_headers.md)
+- [Field Scripts](scripting/README.md)
+  - [Common Patterns](scripting/patterns.md)
+  - [Tooling](scripting/tooling.md)
+  - [Command Reference](scripting/command_reference.md)
+  - [Movement Reference](scripting/movement_reference.md)
 
 ## Utilities
 

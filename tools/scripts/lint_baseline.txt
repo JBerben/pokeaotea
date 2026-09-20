@@ -1,0 +1,15 @@
+# Findings inherited from the base game.
+#
+# These are real, but they are pret's, not ours. Listing them here keeps
+# `make check` green so the linter catches anything *new*, while leaving the
+# findings themselves visible via `--no-baseline`.
+#
+# Format: <where>::<message>   (line numbers are ignored)
+
+# A bg event points at script 45, but that map's entry table has 22 entries.
+# Reaching it would run past the end of the table.
+scripts_oreburgh_city events::bg_events entry uses script 45, but the table has only 22 entries
+
+# An OnFrame cutscene that locks the player and ends without releasing, with no
+# warp or battle to hand control to. Vanilla behaviour.
+scripts_distortion_world_b7f.s::DistortionWorldB7F_OnFrame_FirstEntry locks the player but nothing reachable from it releases; no ReleaseAll and no warp or battle hand-off

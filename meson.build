@@ -330,6 +330,35 @@ test('ROM Checksum',
     args: ['-c', '--quiet', rom_sha1]
 )
 
+# Field script checks. These read the sources directly rather than the built
+# ROM, so they are fast and fail with a message that points at the line.
+python_exe = find_program('python3', native: true)
+script_tools = meson.project_source_root() / 'tools' / 'scripts'
+
+test('Field Scripts - Lint',
+    python_exe,
+    args: [script_tools / 'lint_field_scripts.py'],
+    workdir: meson.project_source_root()
+)
+
+test('Field Scripts - Warp Connectivity',
+    python_exe,
+    args: [script_tools / 'check_warps.py'],
+    workdir: meson.project_source_root()
+)
+
+test('Field Scripts - Tool Unit Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_lint_field_scripts'],
+    workdir: meson.project_source_root()
+)
+
+test('Field Scripts - Doc Examples Assemble',
+    python_exe,
+    args: [script_tools / 'check_script_doc_snippets.py'],
+    workdir: meson.project_source_root()
+)
+
 
 ############################################################
 ###                       POSTCONF                       ###

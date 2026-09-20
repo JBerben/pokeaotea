@@ -126,3 +126,4 @@ compile_commands.json
 *.mch
 
 CLAUDE.md
+.claude/*
