@@ -389,7 +389,7 @@ TwinleafTown_Movement_GuitaristWalkBackX115:
 
 TwinleafTown_CoordEvent_RivalThud:
     LockAll
-    LoadDoorAnimation 3, 27, 9, 11, ANIMATION_TAG_DOOR_1
+    LoadDoorAnimation 3, 27, 16, 3, ANIMATION_TAG_DOOR_1
     PlayDoorOpenAnimation ANIMATION_TAG_DOOR_1
     WaitForAnimation ANIMATION_TAG_DOOR_1
     ClearFlag FLAG_HIDE_TWINLEAF_TOWN_RIVAL
