@@ -221,6 +221,26 @@ after adding or changing a macro.
 toolchain, so a signature change cannot silently invalidate the docs. This one
 needs a configured build directory.
 
+Both generated pages describe the macros as written. For what a command
+*means*, use the command database below.
+
+## The command database
+
+`subprojects/scrcmd-database/platinum_v2.json` is not one of our tools - it is
+a submodule, shared with DSPRE and synced from the decomps - but it is the
+thing to reach for when the question is "what does this command actually do"
+rather than "how do I spell it". Descriptions, opcodes, parameter types, which
+argument receives the result, and macro expansions, all as plain JSON.
+
+```bash
+git submodule update --init subprojects/scrcmd-database
+
+python3 -c 'import json,sys; d=json.load(open("subprojects/scrcmd-database/platinum_v2.json")); print(json.dumps(d["commands"][sys.argv[1]], indent=2))' AddItem
+```
+
+Full write-up, including where it and `asm/macros/scrcmd.inc` disagree, in
+[the command database](command_database.md).
+
 ## `fieldscript.py`
 
 The shared library, not a command. It parses a script into its entry table,

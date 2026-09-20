@@ -22,12 +22,37 @@ pages are generated from the repo, so they cannot drift from the macros:
   reading it whole.
 - `docs/scripting/movement_reference.md` - movement actions for `ApplyMovement`
   blocks.
+- `docs/scripting/command_database.md` - how to use the command database, and
+  the handful of places where it and the macro file disagree.
 
 Every example in those docs is verified against the real toolchain by
 `tools/scripts/check_script_doc_snippets.py`, so the snippets can be trusted as
 written.
 
-For anything the docs do not cover, go to the source in this order:
+## Look commands up in the database
+
+`subprojects/scrcmd-database/platinum_v2.json` is the reference for what a
+command *does*. It is a submodule, shared with DSPRE and synced from the
+decomps, and it covers 1110 of our commands: a description and notes for each,
+its opcode, the type of every parameter, which parameter receives the result,
+and what each macro expands to. If the directory is empty, run
+`git submodule update --init subprojects/scrcmd-database`.
+
+```bash
+python3 -c 'import json,sys; d=json.load(open("subprojects/scrcmd-database/platinum_v2.json")); print(json.dumps(d["commands"][sys.argv[1]], indent=2))' AddItem
+```
+
+Read it before using any command you have not written before, and always
+before assuming which variable a `Check*` or `Get*` command writes to - the
+`access` field says so directly (`must_write`, `may_write`, `read`). A `flex`
+parameter accepts a literal or a variable; a `var` parameter accepts only a
+variable.
+
+Two things it is not. It is **not** the spelling authority: where its argument
+list differs from the macro, write the macro's. And its `access` coverage stops
+at opcode 497, so above that the C handler is still the answer.
+
+For anything the database does not cover, go to the source in this order:
 
 1. `asm/macros/scrcmd.inc` - authoritative signatures. Grep for
    `.macro <Name>` to get the exact parameter list and byte layout.
@@ -83,8 +108,10 @@ everyone.
 **Imitate, don't invent.** This is decompiled code with strong conventions.
 Before writing something new, find the closest vanilla equivalent and match its
 structure, naming and command choices. A command with a high usage count in the
-reference is a safe pattern; a command with zero uses needs its handler read
-first.
+reference is a safe pattern; a command with zero uses needs its database entry
+and its handler read first. A command whose database entry has no description,
+or whose parameters are named `???`, is genuinely unresearched - say so rather
+than guessing at it.
 
 **Naming.** Labels are `<MapName>_<WhatItIs>`, e.g. `TwinleafTown_Guitarist`.
 Movement blocks are `<MapName>_Movement_<What>`, messages are

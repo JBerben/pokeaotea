@@ -14,7 +14,10 @@ Every macro in `asm/macros/scrcmd.inc`, grouped by subject.
   to other macros list those instead.
 
 `asm/macros/scrcmd.inc` stays the authoritative signature list; grep it when you
-need a command's exact byte layout.
+need a command's exact byte layout. For what a command *means* - its
+description, its opcode, which argument it writes its result into, and what the
+macros expand to - read `subprojects/scrcmd-database/platinum_v2.json`; see
+[the command database](command_database.md).
 
 **966 commands** across 20 groups.
 

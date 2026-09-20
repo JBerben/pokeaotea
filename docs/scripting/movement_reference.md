@@ -19,7 +19,9 @@ Every movement macro takes an optional repeat count, defaulting to `1`, so
 one row across the four directions; append the direction to the family name.
 
 Uses are counted across all four directions of a family, over
-`res/field/scripts/*.s`.
+`res/field/scripts/*.s`. `subprojects/scrcmd-database/platinum_v2.json`
+describes what each action looks like on screen; see
+[the command database](command_database.md).
 
 ## Directional families
 

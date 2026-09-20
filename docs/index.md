@@ -37,6 +37,7 @@ For more detailed information about the project as a whole, please refer to its
   - [Tooling](scripting/tooling.md)
   - [Command Reference](scripting/command_reference.md)
   - [Movement Reference](scripting/movement_reference.md)
+  - [Command Database](scripting/command_database.md)
 
 ## Utilities
 

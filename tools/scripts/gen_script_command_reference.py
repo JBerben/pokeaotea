@@ -169,7 +169,10 @@ Every macro in `asm/macros/scrcmd.inc`, grouped by subject.
   to other macros list those instead.
 
 `asm/macros/scrcmd.inc` stays the authoritative signature list; grep it when you
-need a command's exact byte layout.
+need a command's exact byte layout. For what a command *means* - its
+description, its opcode, which argument it writes its result into, and what the
+macros expand to - read `subprojects/scrcmd-database/platinum_v2.json`; see
+[the command database](command_database.md).
 """]
     out.append(f"**{len(macros)} commands** across {len(buckets)} groups.\n")
     out.append("## Contents\n")
@@ -247,7 +250,9 @@ Every movement macro takes an optional repeat count, defaulting to `1`, so
 one row across the four directions; append the direction to the family name.
 
 Uses are counted across all four directions of a family, over
-`res/field/scripts/*.s`.
+`res/field/scripts/*.s`. `subprojects/scrcmd-database/platinum_v2.json`
+describes what each action looks like on screen; see
+[the command database](command_database.md).
 """]
 
     out.append("## Directional families\n")
