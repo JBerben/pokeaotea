@@ -52,6 +52,11 @@ Two things it is not. It is **not** the spelling authority: where its argument
 list differs from the macro, write the macro's. And its `access` coverage stops
 at opcode 497, so above that the C handler is still the answer.
 
+The submodule is **read-only**. Never edit a file under
+`subprojects/scrcmd-database/` and never run its regeneration scripts: a
+submodule's file contents cannot be committed from this repo, and the rebuild
+script silently strips the decomp-derived data we rely on.
+
 For anything the database does not cover, go to the source in this order:
 
 1. `asm/macros/scrcmd.inc` - authoritative signatures. Grep for

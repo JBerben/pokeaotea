@@ -250,28 +250,69 @@ repo, at the submodule revision recorded here:
   that is what is in the ROM; the macro takes a label and the assembler
   computes the offset.
 
-## Keeping it current
+## Treat it as read-only
 
-The submodule pins a revision, so it only moves when someone moves it. `make
-update` will not do it for you - that target runs `meson subprojects update`,
-which only knows about the `.wrap` subprojects:
+Do not edit anything under `subprojects/scrcmd-database/`, and do not run its
+regeneration scripts. Two reasons, and the first one surprises people.
+
+**You cannot commit those edits from here anyway.** A submodule is a separate
+repository. All pokeaotea stores is a pointer to one commit in it:
+
+```
+$ git ls-tree HEAD subprojects/scrcmd-database
+160000 commit 7b8baa5c306693d84b11c6491c22eea322aef13f  subprojects/scrcmd-database
+```
+
+Mode `160000` is a gitlink. Staging the path records *which commit* the
+submodule should sit at, never the contents of its files. A dirty submodule
+shows up in `git status` as a lowercase `m`, which means "modified content I
+cannot stage for you":
+
+```
+ m subprojects/scrcmd-database
+```
+
+Committing it properly would mean committing inside the submodule, and its
+remote belongs to the DSPRE project, so the commit would exist only on your
+machine. Anyone cloning pokeaotea would then fail `git submodule update` on a
+revision they cannot fetch.
+
+**Regenerating loses more than it gains.** The submodule's two scripts are not
+symmetrical:
+
+- `scripts/sync_from_decomp.py` **enriches** the v2 files from a decomp
+  checkout, adding decomp names, parameter types, the `access` annotations and
+  the flags and vars sections. This is what makes our flag IDs line up.
+- `scripts/db_migration.py` **rebuilds** the v2 files from the legacy DSPRE
+  JSON, discarding everything the decomp sync added.
+
+Running the rebuild on its own drops the `vars` section to empty, strips all
+475 `access` annotations, and swaps decomp-derived notes for older DSPRE
+speculation. The difference in quality is the whole point of the file:
+
+| Pinned revision | After a bare `db_migration.py` |
+| --- | --- |
+| "The 16-bit argument is truncated to the low byte, limiting the selectable message slot range to 0-255." | "Supposed." |
+| "The command overwrites variables 0x8004, 0x8005, and 0x8008 through 0x800B as working storage." | "Predicted." |
+
+In `git diff --stat` that looks like a large successful update.
+
+## Moving to a newer revision
+
+Pull upstream instead. `make update` will not do it for you: that target runs
+`meson subprojects update`, which only knows about the `.wrap` subprojects.
 
 ```bash
 git -C subprojects/scrcmd-database pull origin main
-git add subprojects/scrcmd-database        # record the new revision
+git -C subprojects/scrcmd-database log --oneline -5    # see what you are taking
+git add subprojects/scrcmd-database                    # record the new revision
 ```
 
-Pull upstream changes rather than regenerating locally. Two of the submodule's
-own scripts look tempting and are not symmetrical:
+Then re-check the two things we depend on before committing: that every command
+name still resolves to a macro, and that the flag and variable IDs still agree
+with `generated/vars_flags.txt`.
 
-- `scripts/sync_from_decomp.py` **enriches** the v2 files from a decomp
-  checkout - names, parameter types, and the flags and vars sections. This is
-  what makes our flag IDs line up. It needs the `metang` submodule
-  (`git submodule update --init metang` inside the database repo).
-- `scripts/db_migration.py` **rebuilds** the v2 files from the legacy DSPRE
-  JSON, which discards everything the decomp sync added. Running it alone drops
-  the `vars` section to empty and strips every `access` annotation.
-
-So if you regenerate, run `db_migration.py` then `sync_from_decomp.py`, and
-check the diff before committing. Losing 315 variables and 475 access
-annotations looks like a large successful update in `git diff --stat`.
+If we ever do need entries of our own - a command this hack adds that upstream
+will never carry - the answer is to fork the database on GitHub and repoint the
+submodule, or to contribute the entry upstream. Editing the checked-out copy in
+place is the one approach that cannot work.
