@@ -1,0 +1,661 @@
+{
+    "animations": [
+        {
+            "texture": "sea",
+            "frames": "sea.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 },
+                { "frame": 4, "hold": 9 },
+                { "frame": 5, "hold": 9 },
+                { "frame": 6, "hold": 9 },
+                { "frame": 7, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "rhana",
+            "frames": "rhana.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 16 },
+                { "frame": 1, "hold": 16 },
+                { "frame": 2, "hold": 16 },
+                { "frame": 1, "hold": 16 }
+            ]
+        },
+        {
+            "texture": "asasea",
+            "frames": "asasea.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 },
+                { "frame": 4, "hold": 9 },
+                { "frame": 5, "hold": 9 },
+                { "frame": 6, "hold": 9 },
+                { "frame": 7, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "hamabe",
+            "frames": "hamabe.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 },
+                { "frame": 4, "hold": 9 },
+                { "frame": 5, "hold": 9 },
+                { "frame": 6, "hold": 9 },
+                { "frame": 7, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "asahamabe",
+            "frames": "asahamabe.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 },
+                { "frame": 4, "hold": 9 },
+                { "frame": 5, "hold": 9 },
+                { "frame": 6, "hold": 9 },
+                { "frame": 7, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "t3_fl_b.1",
+            "frames": "t3_fl_b_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "t3_fl_p.1",
+            "frames": "t3_fl_p_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "t3_fl_r.1",
+            "frames": "t3_fl_r_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "t3_fl_y.1",
+            "frames": "t3_fl_y_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "dun_sea",
+            "frames": "dun_sea.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 },
+                { "frame": 4, "hold": 9 },
+                { "frame": 5, "hold": 9 },
+                { "frame": 6, "hold": 9 },
+                { "frame": 7, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "lakep.1",
+            "frames": "lakep_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "searock",
+            "frames": "searock.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 8 },
+                { "frame": 1, "hold": 8 },
+                { "frame": 2, "hold": 8 },
+                { "frame": 3, "hold": 8 }
+            ]
+        },
+        {
+            "texture": "numa_b",
+            "frames": "numa_b.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_c",
+            "frames": "numa_c.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_d",
+            "frames": "numa_d.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_e",
+            "frames": "numa_e.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "c3_s03b.1",
+            "frames": "c3_s03b_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 2 },
+                { "frame": 1, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 4, "hold": 2 },
+                { "frame": 5, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 8, "hold": 2 },
+                { "frame": 9, "hold": 2 },
+                { "frame": 10, "hold": 2 },
+                { "frame": 11, "hold": 2 },
+                { "frame": 12, "hold": 2 },
+                { "frame": 13, "hold": 2 },
+                { "frame": 14, "hold": 2 },
+                { "frame": 15, "hold": 2 }
+            ]
+        },
+        {
+            "texture": "numa_f1b",
+            "frames": "numa_f1b.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_f1c",
+            "frames": "numa_f1c.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_f1de",
+            "frames": "numa_f1de.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_b2",
+            "frames": "numa_b2.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_c2",
+            "frames": "numa_c2.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_d2",
+            "frames": "numa_d2.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "numa_e2",
+            "frames": "numa_e2.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "c1_lamp01",
+            "frames": "c1_lamp01.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 18 },
+                { "frame": 1, "hold": 6 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 27 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 1, "hold": 6 }
+            ]
+        },
+        {
+            "texture": "c1_lamp02",
+            "frames": "c1_lamp02.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 27 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 6 },
+                { "frame": 4, "hold": 18 },
+                { "frame": 3, "hold": 6 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 1, "hold": 4 }
+            ]
+        },
+        {
+            "texture": "bf_lakep.1",
+            "frames": "bf_lakep_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 9 },
+                { "frame": 1, "hold": 9 },
+                { "frame": 2, "hold": 9 },
+                { "frame": 3, "hold": 9 }
+            ]
+        },
+        {
+            "texture": "bf_hata02.1",
+            "frames": "bf_hata02_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 8 },
+                { "frame": 1, "hold": 15 },
+                { "frame": 2, "hold": 8 },
+                { "frame": 3, "hold": 15 }
+            ]
+        },
+        {
+            "texture": "azt_wall02.1",
+            "frames": "azt_wall02_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 5 },
+                { "frame": 1, "hold": 5 }
+            ]
+        },
+        {
+            "texture": "gingaanm.1",
+            "frames": "gingaanm_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 16 },
+                { "frame": 1, "hold": 8 },
+                { "frame": 2, "hold": 8 },
+                { "frame": 3, "hold": 8 },
+                { "frame": 4, "hold": 16 },
+                { "frame": 3, "hold": 8 },
+                { "frame": 2, "hold": 8 },
+                { "frame": 1, "hold": 8 }
+            ]
+        },
+        {
+            "texture": "lost_kebe",
+            "frames": "lost_kebe.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 5 },
+                { "frame": 1, "hold": 5 }
+            ]
+        },
+        {
+            "texture": "mc_gamen.1",
+            "frames": "mc_gamen_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "yomawaru.1",
+            "frames": "yomawaru_1.nsbtx",
+            "sequence": [
+                { "frame": 2, "hold": 25 },
+                { "frame": 0, "hold": 25 },
+                { "frame": 1, "hold": 50 },
+                { "frame": 0, "hold": 25 },
+                { "frame": 2, "hold": 25 }
+            ]
+        },
+        {
+            "texture": "gym04_fl_p.1",
+            "frames": "gym04_fl_p_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 23 },
+                { "frame": 2, "hold": 23 }
+            ]
+        },
+        {
+            "texture": "gym04_fl_r.1",
+            "frames": "gym04_fl_r_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 23 },
+                { "frame": 2, "hold": 23 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe1",
+            "frames": "wtk_kabe1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 6, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe2",
+            "frames": "wtk_kabe2.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 6, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe3",
+            "frames": "wtk_kabe3.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 6, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe11.0",
+            "frames": "wtk_kabe11_0.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 4 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 4 },
+                { "frame": 5, "hold": 4 },
+                { "frame": 6, "hold": 4 },
+                { "frame": 7, "hold": 4 },
+                { "frame": 9, "hold": 20 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe12.0",
+            "frames": "wtk_kabe12_0.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 4 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 4 },
+                { "frame": 5, "hold": 4 },
+                { "frame": 6, "hold": 4 },
+                { "frame": 7, "hold": 4 },
+                { "frame": 9, "hold": 20 }
+            ]
+        },
+        {
+            "texture": "wtk_kabe13.0",
+            "frames": "wtk_kabe13_0.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 4 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 4 },
+                { "frame": 5, "hold": 4 },
+                { "frame": 6, "hold": 4 },
+                { "frame": 7, "hold": 4 },
+                { "frame": 9, "hold": 20 }
+            ]
+        },
+        {
+            "texture": "m_bf05_hsr1.1",
+            "frames": "m_bf05_hsr1_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "m_bf05_light03",
+            "frames": "m_bf05_light03.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 3 }
+            ]
+        },
+        {
+            "texture": "warp00.1",
+            "frames": "warp00_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 5 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 4 }
+            ]
+        },
+        {
+            "texture": "pikar.1",
+            "frames": "pikar_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 11 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 7 }
+            ]
+        },
+        {
+            "texture": "yuka_red.1",
+            "frames": "yuka_red_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 11 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 3, "hold": 1 },
+                { "frame": 4, "hold": 1 },
+                { "frame": 5, "hold": 1 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 5, "hold": 1 },
+                { "frame": 4, "hold": 1 },
+                { "frame": 3, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 7 }
+            ]
+        },
+        {
+            "texture": "pikay.1",
+            "frames": "pikay_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 7 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 3, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 3, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 3, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 0, "hold": 15 }
+            ]
+        },
+        {
+            "texture": "yuka_yellow.1",
+            "frames": "yuka_yellow_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 7 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 7, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 7, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 6, "hold": 1 },
+                { "frame": 7, "hold": 1 },
+                { "frame": 0, "hold": 3 },
+                { "frame": 0, "hold": 15 }
+            ]
+        },
+        {
+            "texture": "pikao.1",
+            "frames": "pikao_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 1 },
+                { "frame": 0, "hold": 1 },
+                { "frame": 2, "hold": 1 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 3, "hold": 2 },
+                { "frame": 2, "hold": 2 },
+                { "frame": 1, "hold": 1 }
+            ]
+        },
+        {
+            "texture": "yuka_ora.1",
+            "frames": "yuka_ora_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 1 },
+                { "frame": 1, "hold": 1 },
+                { "frame": 5, "hold": 1 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 7, "hold": 2 },
+                { "frame": 6, "hold": 2 },
+                { "frame": 3, "hold": 1 }
+            ]
+        },
+        {
+            "texture": "dun16_wall.1",
+            "frames": "dun16_wall_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 20 },
+                { "frame": 1, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 4, "hold": 4 },
+                { "frame": 3, "hold": 4 },
+                { "frame": 2, "hold": 4 },
+                { "frame": 1, "hold": 4 }
+            ]
+        },
+        {
+            "texture": "m_4ten_hi.1",
+            "frames": "m_4ten_hi_1.nsbtx",
+            "sequence": [
+                { "frame": 0, "hold": 3 },
+                { "frame": 1, "hold": 3 },
+                { "frame": 2, "hold": 3 },
+                { "frame": 3, "hold": 3 },
+                { "frame": 4, "hold": 3 },
+                { "frame": 5, "hold": 3 },
+                { "frame": 7, "hold": 3 }
+            ]
+        }
+    ]
+}

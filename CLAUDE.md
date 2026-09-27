@@ -129,6 +129,9 @@ Map matrix → map headers → area data (texture set + prop set + lighting) →
 data. Read `docs/maps/README.md` first; `src/overlay005/` holds the runtime side (`fieldmap.c`,
 `area_data.c`, `land_data.c`, `bdhc.c`, `map_prop.c`).
 
+Animated ground tiles (sea, flowers, lamps) are matched to map texture sets by texture name and
+built from `res/field/texture_animations/`; see `docs/maps/texture_animations.md`.
+
 ### Logging
 
 With `make debug`, `#include "debug.h"` and call `EmulatorLog(fmt, ...)` (printf-style, prefixed

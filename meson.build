@@ -359,6 +359,14 @@ test('Field Scripts - Doc Examples Assemble',
     workdir: meson.project_source_root()
 )
 
+test('Texture Animations - Packer Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_make_texture_animations'],
+    env: {'NITROARC': nitroarc_exe.full_path()},
+    depends: nitroarc_exe,
+    workdir: meson.project_source_root()
+)
+
 
 ############################################################
 ###                       POSTCONF                       ###

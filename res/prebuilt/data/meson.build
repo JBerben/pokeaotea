@@ -32,7 +32,6 @@ prebuilt_files = [
     'fld_anime7.bin',
     'fld_anime8.bin',
     'fld_anime9.bin',
-    'fldtanime.narc',
     'fs_kanban.nsbca',
     'ground0.NCGR',
     'ground0.NCLR',

@@ -48,6 +48,8 @@ in which the player moves.
   store map data
 - [dynamic_map_features.md](dynamic_map_features.md): a description of the dynamic map
   features system used to make dynamic maps
+- [texture_animations.md](texture_animations.md): how animated ground tiles (sea,
+  flowers, lamps) are matched to map texture sets, and how to add new ones
 
 ## Credits
 

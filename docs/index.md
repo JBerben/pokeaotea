@@ -32,6 +32,7 @@ For more detailed information about the project as a whole, please refer to its
 - [Replacing 3D Models](replacing_3d_models.md)
 - [Maps](maps/README.md)
   - [Editing Map Headers](maps/editing_map_headers.md)
+  - [Texture Animations](maps/texture_animations.md)
 - [Field Scripts](scripting/README.md)
   - [Common Patterns](scripting/patterns.md)
   - [Tooling](scripting/tooling.md)

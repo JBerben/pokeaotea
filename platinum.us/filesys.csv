@@ -36,7 +36,7 @@ res/prebuilt/data/fld_anime6.bin,/data/fld_anime6.bin
 res/prebuilt/data/fld_anime7.bin,/data/fld_anime7.bin
 res/prebuilt/data/fld_anime8.bin,/data/fld_anime8.bin
 res/prebuilt/data/fld_anime9.bin,/data/fld_anime9.bin
-res/prebuilt/data/fldtanime.narc,/data/fldtanime.narc
+res/field/texture_animations/texture_animations.narc,/data/fldtanime.narc
 res/prebuilt/data/fs_kanban.nsbca,/data/fs_kanban.nsbca
 res/prebuilt/data/ground0.NCGR,/data/ground0.NCGR
 res/prebuilt/data/ground0.NCLR,/data/ground0.NCLR
