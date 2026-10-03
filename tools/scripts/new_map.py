@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ABOUTME: Scaffolds a new map's scripts, text and events (and optionally its header), wired into the build.
+# ABOUTME: build_plan() collects every change for a repo root; nothing is written until Plan.apply().
 """Scaffold a new map's scripts, text and events, fully wired into the build.
 
     python3 tools/scripts/new_map.py my_new_town --dry-run
@@ -36,13 +38,25 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fieldscript as fs  # noqa: E402
 
-SCRIPTS_MESON = os.path.join(fs.SCRIPT_DIR, "meson.build")
-SCRIPTS_ORDER = os.path.join(fs.SCRIPT_DIR, "scripts.order")
-EVENTS_MESON = os.path.join(fs.EVENTS_DIR, "meson.build")
-EVENTS_ORDER = os.path.join(fs.EVENTS_DIR, "zone_event.order")
-TEXT_BANKS = os.path.join(fs.ROOT, "generated/text_banks.txt")
-MAP_HEADERS_TXT = os.path.join(fs.ROOT, "generated/map_headers.txt")
-MAP_HEADERS_H = os.path.join(fs.ROOT, "include/data/map_headers.h")
+class Paths:
+    """Every file new_map reads or writes, under one repository root."""
+
+    def __init__(self, root):
+        self.root = os.fspath(root)
+        self.script_dir = os.path.join(self.root, "res/field/scripts")
+        self.events_dir = os.path.join(self.root, "res/field/events")
+        self.text_dir = os.path.join(self.root, "res/text")
+        self.scripts_meson = os.path.join(self.script_dir, "meson.build")
+        self.scripts_order = os.path.join(self.script_dir, "scripts.order")
+        self.events_meson = os.path.join(self.events_dir, "meson.build")
+        self.events_order = os.path.join(self.events_dir, "zone_event.order")
+        self.text_banks = os.path.join(self.root, "generated/text_banks.txt")
+        self.map_headers_txt = os.path.join(self.root, "generated/map_headers.txt")
+        self.map_headers_h = os.path.join(self.root, "include/data/map_headers.h")
+
+
+class NewMapError(Exception):
+    pass
 
 DEFAULT_TEMPLATE = "MAP_HEADER_TWINLEAF_TOWN_NORTHEAST_HOUSE"
 
@@ -98,7 +112,8 @@ def camel_case(name):
 class Plan:
     """Every change, collected before anything is written."""
 
-    def __init__(self):
+    def __init__(self, root=fs.ROOT):
+        self.root = os.fspath(root)
         self.creates = []       # (path, content)
         self.edits = []         # (path, description, new_content)
 
@@ -108,11 +123,15 @@ class Plan:
     def edit(self, path, description, content):
         self.edits.append((path, description, content))
 
+    def lines(self):
+        lines = [f"  create  {os.path.relpath(path, self.root)}" for path, _ in self.creates]
+        lines += [f"  edit    {os.path.relpath(path, self.root)}  ({description})"
+                  for path, description, _ in self.edits]
+        return lines
+
     def describe(self):
-        for path, _ in self.creates:
-            print(f"  create  {os.path.relpath(path, fs.ROOT)}")
-        for path, description, _ in self.edits:
-            print(f"  edit    {os.path.relpath(path, fs.ROOT)}  ({description})")
+        for line in self.lines():
+            print(line)
 
     def apply(self):
         for path, content in self.creates:
@@ -141,14 +160,14 @@ def append_line(text, line, ending):
     return text + line + ending
 
 
-def next_text_bank_key():
+def next_text_bank_key(text_dir):
     """Text bank keys look arbitrary; take one clear of everything in use."""
     highest = 0
-    for filename in os.listdir(fs.TEXT_DIR):
+    for filename in os.listdir(text_dir):
         if not filename.endswith(".json"):
             continue
         try:
-            with open(os.path.join(fs.TEXT_DIR, filename), encoding="utf-8") as h:
+            with open(os.path.join(text_dir, filename), encoding="utf-8") as h:
                 import json
                 key = json.load(h).get("key")
         except (OSError, ValueError):
@@ -158,9 +177,9 @@ def next_text_bank_key():
     return highest + 1
 
 
-def header_block(new_header, template_header, name):
+def header_block(new_header, template_header, name, map_headers_h):
     """A map header entry copying the template's geometry."""
-    text = read(MAP_HEADERS_H)
+    text = read(map_headers_h)
     match = re.search(r"\[" + re.escape(template_header) + r"\]\s*=\s*\{(.*?)\n    \}",
                       text, re.S)
     if not match:
@@ -183,70 +202,74 @@ def header_block(new_header, template_header, name):
     return f"    [{new_header}] = {{\n{body}\n    }},\n"
 
 
-def build_plan(name, label, add_header, template_header):
+def build_plan(name, label, add_header, template_header, root=fs.ROOT):
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+        raise NewMapError("name must be lower snake_case")
+
+    paths = Paths(root)
     camel = camel_case(name)
-    plan = Plan()
+    plan = Plan(paths.root)
 
     targets = {
-        "script": os.path.join(fs.SCRIPT_DIR, f"scripts_{name}.s"),
-        "init": os.path.join(fs.SCRIPT_DIR, f"scripts_init_{name}.s"),
-        "text": os.path.join(fs.TEXT_DIR, f"{name}.json"),
-        "events": os.path.join(fs.EVENTS_DIR, f"events_{name}.json"),
+        "script": os.path.join(paths.script_dir, f"scripts_{name}.s"),
+        "init": os.path.join(paths.script_dir, f"scripts_init_{name}.s"),
+        "text": os.path.join(paths.text_dir, f"{name}.json"),
+        "events": os.path.join(paths.events_dir, f"events_{name}.json"),
     }
     existing = [p for p in targets.values() if os.path.exists(p)]
     if existing:
-        raise SystemExit("error: these already exist, refusing to overwrite:\n  "
-                         + "\n  ".join(os.path.relpath(p, fs.ROOT)
-                                       for p in existing))
+        raise NewMapError("these already exist, refusing to overwrite:\n  "
+                          + "\n  ".join(os.path.relpath(p, paths.root)
+                                        for p in existing))
 
     plan.create(targets["script"], SCRIPT_TEMPLATE.format(name=name, camel=camel))
     plan.create(targets["init"], INIT_TEMPLATE)
     plan.create(targets["text"], TEXT_TEMPLATE.format(
-        key=next_text_bank_key(), camel=camel, label=label))
+        key=next_text_bank_key(paths.text_dir), camel=camel, label=label))
     plan.create(targets["events"], EVENTS_TEMPLATE)
 
     # Scripts: meson list and order file must gain both files, in step.
-    meson = read(SCRIPTS_MESON)
+    meson = read(paths.scripts_meson)
     meson = append_to_meson_list(meson, f"scripts_{name}.s", "scr_seq_files = files(")
     meson = append_to_meson_list(meson, f"scripts_init_{name}.s", "scr_seq_files = files(")
-    plan.edit(SCRIPTS_MESON, "scr_seq_files += 2", meson)
+    plan.edit(paths.scripts_meson, "scr_seq_files += 2", meson)
 
-    order = read(SCRIPTS_ORDER)
+    order = read(paths.scripts_order)
     order = append_line(order, f"scripts_{name}", "\n")
     order = append_line(order, f"scripts_init_{name}", "\n")
-    plan.edit(SCRIPTS_ORDER, "+2 entries, same order as meson", order)
+    plan.edit(paths.scripts_order, "+2 entries, same order as meson", order)
 
     # Events: meson list and its own order file, which uses CRLF.
-    events_meson = read(EVENTS_MESON)
+    events_meson = read(paths.events_meson)
     events_meson = append_to_meson_list(events_meson, f"events_{name}.json",
                                         "events_files = files(")
-    plan.edit(EVENTS_MESON, "events_files += 1", events_meson)
+    plan.edit(paths.events_meson, "events_files += 1", events_meson)
 
-    events_order = read(EVENTS_ORDER)
+    events_order = read(paths.events_order)
     events_order = append_line(events_order, f"events_{name}", "\r\n")
-    plan.edit(EVENTS_ORDER, "+1 entry (CRLF)", events_order)
+    plan.edit(paths.events_order, "+1 entry (CRLF)", events_order)
 
-    banks = read(TEXT_BANKS)
+    banks = read(paths.text_banks)
     banks = append_line(banks, "TEXT_BANK_" + name.upper(), "\n")
-    plan.edit(TEXT_BANKS, "TEXT_BANK_" + name.upper(), banks)
+    plan.edit(paths.text_banks, "TEXT_BANK_" + name.upper(), banks)
 
     if add_header:
         new_header = "MAP_HEADER_" + name.upper()
-        headers_txt = read(MAP_HEADERS_TXT)
+        headers_txt = read(paths.map_headers_txt)
         if new_header in headers_txt:
-            raise SystemExit(f"error: {new_header} already exists")
+            raise NewMapError(f"{new_header} already exists")
         # MAP_HEADER_COUNT closes the list, so the new name goes before it.
         headers_txt = headers_txt.replace(
             "MAP_HEADER_COUNT", new_header + "\nMAP_HEADER_COUNT", 1)
-        plan.edit(MAP_HEADERS_TXT, f"{new_header} before MAP_HEADER_COUNT",
+        plan.edit(paths.map_headers_txt, f"{new_header} before MAP_HEADER_COUNT",
                   headers_txt)
 
-        block = header_block(new_header, template_header, name)
+        block = header_block(new_header, template_header, name, paths.map_headers_h)
         if block is None:
-            raise SystemExit(f"error: no template header {template_header}")
-        headers_h = read(MAP_HEADERS_H)
+            raise NewMapError(f"no template header {template_header}")
+        headers_h = read(paths.map_headers_h)
         close = headers_h.rindex("};")
-        plan.edit(MAP_HEADERS_H, f"{new_header}, geometry from {template_header}",
+        plan.edit(paths.map_headers_h, f"{new_header}, geometry from {template_header}",
                   headers_h[:close] + block + headers_h[close:])
 
     return plan
@@ -270,8 +293,11 @@ def main():
         print("error: name must be lower snake_case", file=sys.stderr)
         return 2
 
-    plan = build_plan(args.name, args.label or args.name.replace("_", " "),
-                      args.header, args.like)
+    try:
+        plan = build_plan(args.name, args.label or args.name.replace("_", " "),
+                          args.header, args.like)
+    except NewMapError as error:
+        raise SystemExit(f"error: {error}")
 
     print(f"{'Would apply' if args.dry_run else 'Applying'} for "
           f"'{args.name}':\n")

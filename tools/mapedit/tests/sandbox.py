@@ -30,8 +30,17 @@ PROP_SOURCES = [
 ]
 
 
+# What new_map.py reads and writes, on top of the map files above.
+MAP_SOURCES = [
+    'res/field/scripts/meson.build',
+    'res/field/scripts/scripts.order',
+    'generated/text_banks.txt',
+    'generated/map_headers.txt',
+]
+
+
 class Sandbox:
-    def __init__(self, land_data=('000',), texture_sets=('000',)):
+    def __init__(self, land_data=('000',), texture_sets=('000',), map_sources=False):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
         for relative in FILES + PROP_SOURCES:
@@ -42,6 +51,10 @@ class Sandbox:
             self.copy(f'res/field/maps/data/map_data_{name}.bin')
         for name in texture_sets:
             self.copy(f'res/field/props/texture_sets/prop_texture_set_{name}.nsbtx')
+        if map_sources:
+            for relative in MAP_SOURCES:
+                self.copy(relative)
+            shutil.copytree(REPO / 'res/text', self.root / 'res/text')
 
     def copy(self, relative: str):
         (self.root / relative).parent.mkdir(parents=True, exist_ok=True)

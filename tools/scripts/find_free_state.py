@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ABOUTME: Finds flags and variables that are free to claim, skipping ranges the engine indexes numerically.
+# ABOUTME: scan(), free_summary(), reserved_ranges() and check_name() return data for mapedit and the CLI.
 """Find flags and variables that are free to claim for new content.
 
     python3 tools/scripts/find_free_state.py              # what is free
@@ -22,6 +24,7 @@ import argparse
 import os
 import re
 import sys
+from dataclasses import dataclass
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 VARS_FLAGS = os.path.join(ROOT, "generated/vars_flags.txt")
@@ -156,6 +159,85 @@ def claim_rank(entry):
     return 3
 
 
+FREE = "free"
+RESERVED_NAME = "reserved"
+IN_USE = "in use"
+UNKNOWN = "unknown"
+
+
+@dataclass
+class State:
+    entries: list
+    used: set
+
+
+@dataclass
+class KindSummary:
+    kind: str
+    label: str
+    defined: int
+    reserved: int
+    general: int
+    in_use: int
+    free: list
+
+
+@dataclass
+class ReservedRange:
+    first: str
+    last: str
+    count: int
+    reason: str
+
+
+@dataclass
+class NameStatus:
+    status: str
+    message: str
+
+
+def scan():
+    """Every flag/variable entry, plus every name the sources mention."""
+    used, _ = referenced_names()
+    return State(parse_entries(), used)
+
+
+def free_summary(state):
+    summaries = []
+    for kind, label in (("flag", "flags"), ("var", "variables")):
+        pool = [e for e in state.entries if e.kind == kind]
+        general = [e for e in pool if not e.reserved_reason]
+        free = sorted((e for e in general if e.name not in state.used),
+                      key=lambda e: (claim_rank(e), e.line))
+        summaries.append(KindSummary(kind, label, len(pool), len(pool) - len(general),
+                                     len(general), len(general) - len(free), free))
+    return summaries
+
+
+def reserved_ranges(state):
+    ranges, seen = [], set()
+    for entry in state.entries:
+        if entry.reserved_reason and entry.reserved_reason not in seen:
+            seen.add(entry.reserved_reason)
+            members = [e for e in state.entries
+                       if e.reserved_reason == entry.reserved_reason]
+            ranges.append(ReservedRange(members[0].name, members[-1].name,
+                                        len(members), entry.reserved_reason))
+    return ranges
+
+
+def check_name(state, name):
+    match = next((e for e in state.entries if e.name == name), None)
+    if not match:
+        return NameStatus(UNKNOWN, f"{name} is not in generated/vars_flags.txt")
+    if match.reserved_reason:
+        return NameStatus(RESERVED_NAME, f"{match.name}: RESERVED - {match.reserved_reason}")
+    if match.name in state.used:
+        return NameStatus(IN_USE, f"{match.name}: in use (referenced in the sources)")
+    return NameStatus(FREE, f"{match.name}: free to claim "
+                            f"(general range, line {match.line} of generated/vars_flags.txt)")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--limit", type=int, default=15,
@@ -166,49 +248,29 @@ def main():
                         help="report whether one specific name is free")
     args = parser.parse_args()
 
-    entries = parse_entries()
-    used, _ = referenced_names()
+    state = scan()
 
     if args.ranges:
         print("Reserved ranges - do not hand-claim names inside these:\n")
-        seen = set()
-        for entry in entries:
-            if entry.reserved_reason and entry.reserved_reason not in seen:
-                seen.add(entry.reserved_reason)
-                members = [e for e in entries
-                           if e.reserved_reason == entry.reserved_reason]
-                print(f"  {members[0].name}")
-                print(f"    .. {members[-1].name}  ({len(members)} entries)")
-                print(f"    {entry.reserved_reason}\n")
+        for reserved in reserved_ranges(state):
+            print(f"  {reserved.first}")
+            print(f"    .. {reserved.last}  ({reserved.count} entries)")
+            print(f"    {reserved.reason}\n")
         return 0
 
     if args.check:
-        match = next((e for e in entries if e.name == args.check), None)
-        if not match:
-            print(f"{args.check} is not in generated/vars_flags.txt",
-                  file=sys.stderr)
+        result = check_name(state, args.check)
+        if result.status == UNKNOWN:
+            print(result.message, file=sys.stderr)
             return 2
-        if match.reserved_reason:
-            print(f"{match.name}: RESERVED - {match.reserved_reason}")
-            return 1
-        if match.name in used:
-            print(f"{match.name}: in use (referenced in the sources)")
-            return 1
-        print(f"{match.name}: free to claim "
-              f"(general range, line {match.line} of generated/vars_flags.txt)")
-        return 0
+        print(result.message)
+        return 0 if result.status == FREE else 1
 
-    for kind, label in (("flag", "flags"), ("var", "variables")):
-        pool = [e for e in entries if e.kind == kind]
-        general = [e for e in pool if not e.reserved_reason]
-        free = sorted((e for e in general if e.name not in used),
-                      key=lambda e: (claim_rank(e), e.line))
-        reserved = len(pool) - len(general)
-
-        print(f"\n{label}: {len(pool)} defined, {reserved} in reserved ranges, "
-              f"{len(general) - len(free)} of the remaining {len(general)} in use")
-        print(f"  {len(free)} free to claim; first {min(args.limit, len(free))}:")
-        for entry in free[:args.limit]:
+    for summary in free_summary(state):
+        print(f"\n{summary.label}: {summary.defined} defined, {summary.reserved} in reserved ranges, "
+              f"{summary.in_use} of the remaining {summary.general} in use")
+        print(f"  {len(summary.free)} free to claim; first {min(args.limit, len(summary.free))}:")
+        for entry in summary.free[:args.limit]:
             print(f"    {entry.name:<52} line {entry.line}")
 
     print("\nClaim a name by renaming it in place in generated/vars_flags.txt.")

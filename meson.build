@@ -399,6 +399,14 @@ test('Field Tools - Tile Classification Tests',
     workdir: meson.project_source_root()
 )
 
+test('Field Tools - Map Info, Warps, Free State and New Map Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_map_info', 'tools.scripts.test_check_warps',
+           'tools.scripts.test_find_free_state', 'tools.scripts.test_new_map'],
+    workdir: meson.project_source_root(),
+    timeout: 120,
+)
+
 # mapedit is a uv project with its own dependencies (Textual), so its tests need uv.
 uv_exe = find_program('uv', native: true, required: false)
 if uv_exe.found()

@@ -11,9 +11,10 @@ from .sandbox import Sandbox
 
 class MapEditTestCase(unittest.IsolatedAsyncioTestCase):
     LAND_DATA = ('000',)
+    MAP_SOURCES = False
 
     def setUp(self):
-        self.sandbox = Sandbox(land_data=self.LAND_DATA)
+        self.sandbox = Sandbox(land_data=self.LAND_DATA, map_sources=self.MAP_SOURCES)
         self.app = MapEditApp(self.sandbox.root)
 
     async def asyncSetUp(self):
@@ -23,3 +24,8 @@ class MapEditTestCase(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self):
         self.sandbox.cleanup()
+
+    async def open_map(self, pilot, query='twinleaf town'):
+        await pilot.click('#search')
+        await pilot.press(*query, 'enter')
+        await pilot.pause()

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ABOUTME: Shows how a map is wired: its entry table, what references each entry, events, text and state used.
+# ABOUTME: summarize() returns the report as data for mapedit; the command line prints format_summary().
 """Show how a map is wired: its entry table, and what points at each entry.
 
     python3 tools/scripts/map_info.py twinleaf_town
@@ -13,6 +15,7 @@ import argparse
 import os
 import re
 import sys
+from dataclasses import dataclass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fieldscript as fs  # noqa: E402
@@ -89,18 +92,44 @@ def state_used(script):
     return flags, variables
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("map", help="map name, e.g. twinleaf_town")
-    parser.add_argument("--state", action="store_true",
-                        help="also list the flags and variables it uses")
-    args = parser.parse_args()
+class MapInfoError(Exception):
+    pass
 
-    stem = args.map if args.map.startswith("scripts_") else "scripts_" + args.map
+
+@dataclass
+class Entry:
+    index: int
+    label: str
+    references: list
+
+
+@dataclass
+class MapSummary:
+    stem: str
+    header: str
+    fields: dict
+    entries: list
+    next_free_index: int
+    has_unreferenced: bool
+    frame_rows: list
+    event_counts: dict
+    text_messages: int
+    text_path: str
+    flags: list
+    variables: list
+
+
+def script_stem_for_header(header):
+    """The scripts file a map header points at, or None."""
+    return fs.map_wiring().get(header, {}).get("scriptsArchiveID")
+
+
+def summarize(map_name):
+    """Everything map_info reports about a map, as data."""
+    stem = map_name if map_name.startswith("scripts_") else "scripts_" + map_name
     path = fs.script_path(stem)
     if not path:
-        print(f"error: no {stem}.s in res/field/scripts", file=sys.stderr)
-        return 2
+        raise MapInfoError(f"no {stem}.s in res/field/scripts")
 
     script = fs.parse_script(path)
     header, fields = None, {}
@@ -109,16 +138,6 @@ def main():
             header, fields = candidate, values
             break
 
-    print(f"{header or '(no map header points at this file)'}\n")
-    print(f"  scripts       {stem}.s")
-    for label, key in (("init scripts ", "initScriptsArchiveID"),
-                       ("text bank    ", "msgArchiveID"),
-                       ("events       ", "eventsArchiveID"),
-                       ("map matrix   ", "mapMatrixID"),
-                       ("area data    ", "areaDataArchiveID")):
-        if fields.get(key):
-            print(f"  {label} {fields[key]}")
-
     init_symbol = fields.get("initScriptsArchiveID")
     init_path = fs.script_path(init_symbol) if init_symbol else None
     init_script = fs.parse_script(init_path) if init_path else None
@@ -126,44 +145,99 @@ def main():
         "eventsArchiveID") else None
 
     used = references(events, init_script)
-    print(f"\nentry table ({len(script.entries)} entries)\n")
-    width = max((len(e) for e in script.entries), default=0)
-    for index, label in enumerate(script.entries, 1):
-        who = ", ".join(used.get(index, [])) or "(not referenced from events or init)"
-        print(f"  {index:3d}  {label:<{width}}  {who}")
-    print(f"\n  next free index: {len(script.entries) + 1} (append only)")
-    if any(index not in used for index in range(1, len(script.entries) + 1)):
-        print("  unreferenced entries are reached from C or another script, "
-              "not from this map's events file")
+    entries = [Entry(index, label, used.get(index, []))
+               for index, label in enumerate(script.entries, 1)]
 
-    rows = frame_table_rows(init_path)
-    if rows:
-        print("\ninit script frame table")
-        for variable, value, index in rows:
-            print(f"  when {variable} == {value}  ->  entry {index}")
-
+    event_counts = None
     if events:
-        counts = {section: len(events.get(section, []))
-                  for section in ("object_events", "coord_events",
-                                  "bg_events", "warp_events")}
-        print("\nevents  " + "  ".join(f"{k.replace('_events','')}={v}"
-                                       for k, v in counts.items()))
+        event_counts = {section: len(events.get(section, []))
+                        for section in ("object_events", "coord_events",
+                                        "bg_events", "warp_events")}
 
     bank_constant = fields.get("msgArchiveID")
     bank = fs.load_text_bank(bank_constant) if bank_constant else None
-    if bank is not None:
-        print(f"text    {len(bank)} messages in "
-              f"{os.path.relpath(fs.text_bank_path(bank_constant), fs.ROOT)}")
+    text_messages = len(bank) if bank is not None else None
+    text_path = (os.path.relpath(fs.text_bank_path(bank_constant), fs.ROOT)
+                 if bank is not None else None)
 
-    if args.state:
-        flags, variables = state_used(script)
-        print(f"\nflags used ({len(flags)})")
-        for flag in flags:
-            print(f"  {flag}")
-        print(f"\nvariables used ({len(variables)})")
-        for variable in variables:
-            print(f"  {variable}")
+    flags, variables = state_used(script)
+    return MapSummary(
+        stem=stem,
+        header=header,
+        fields=fields,
+        entries=entries,
+        next_free_index=len(script.entries) + 1,
+        has_unreferenced=any(index not in used
+                             for index in range(1, len(script.entries) + 1)),
+        frame_rows=frame_table_rows(init_path),
+        event_counts=event_counts,
+        text_messages=text_messages,
+        text_path=text_path,
+        flags=flags,
+        variables=variables,
+    )
 
+
+def format_summary(summary, state=False):
+    """The map_info report for a summary, as printed by the command line."""
+    lines = []
+    lines.append(f"{summary.header or '(no map header points at this file)'}\n")
+    lines.append(f"  scripts       {summary.stem}.s")
+    for label, key in (("init scripts ", "initScriptsArchiveID"),
+                       ("text bank    ", "msgArchiveID"),
+                       ("events       ", "eventsArchiveID"),
+                       ("map matrix   ", "mapMatrixID"),
+                       ("area data    ", "areaDataArchiveID")):
+        if summary.fields.get(key):
+            lines.append(f"  {label} {summary.fields[key]}")
+
+    lines.append(f"\nentry table ({len(summary.entries)} entries)\n")
+    width = max((len(e.label) for e in summary.entries), default=0)
+    for entry in summary.entries:
+        who = ", ".join(entry.references) or "(not referenced from events or init)"
+        lines.append(f"  {entry.index:3d}  {entry.label:<{width}}  {who}")
+    lines.append(f"\n  next free index: {summary.next_free_index} (append only)")
+    if summary.has_unreferenced:
+        lines.append("  unreferenced entries are reached from C or another script, "
+                     "not from this map's events file")
+
+    if summary.frame_rows:
+        lines.append("\ninit script frame table")
+        for variable, value, index in summary.frame_rows:
+            lines.append(f"  when {variable} == {value}  ->  entry {index}")
+
+    if summary.event_counts:
+        lines.append("\nevents  " + "  ".join(f"{k.replace('_events','')}={v}"
+                                              for k, v in summary.event_counts.items()))
+
+    if summary.text_messages is not None:
+        lines.append(f"text    {summary.text_messages} messages in {summary.text_path}")
+
+    if state:
+        lines.append(f"\nflags used ({len(summary.flags)})")
+        for flag in summary.flags:
+            lines.append(f"  {flag}")
+        lines.append(f"\nvariables used ({len(summary.variables)})")
+        for variable in summary.variables:
+            lines.append(f"  {variable}")
+
+    return "\n".join(lines)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("map", help="map name, e.g. twinleaf_town")
+    parser.add_argument("--state", action="store_true",
+                        help="also list the flags and variables it uses")
+    args = parser.parse_args()
+
+    try:
+        summary = summarize(args.map)
+    except MapInfoError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+    print(format_summary(summary, state=args.state))
     return 0
 
 

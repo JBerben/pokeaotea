@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ABOUTME: Checks that every warp in res/field/events leads to a real header and a valid warp index.
+# ABOUTME: check_warps() returns the findings as data for mapedit; the command line prints them.
 """Check that every warp leads somewhere real.
 
     python3 tools/scripts/check_warps.py            # every map
@@ -32,6 +34,7 @@ import json
 import os
 import re
 import sys
+from dataclasses import dataclass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fieldscript as fs  # noqa: E402
@@ -64,14 +67,15 @@ def warps_of(events_symbol, cache):
     return warps
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("maps", nargs="*", help="map names (default: all)")
-    parser.add_argument("--one-way", action="store_true",
-                        help="also list warps with no return warp")
-    parser.add_argument("--quiet", action="store_true")
-    args = parser.parse_args()
+@dataclass
+class WarpReport:
+    findings: list
+    one_way: list
+    total: int
 
+
+def check_warps(maps=None, one_way=False):
+    """Check the warps of the named maps (default: every events file)."""
     wiring = fs.map_wiring()
     headers = known_headers()
     # An events file can be shared; report against the header that owns it.
@@ -82,11 +86,11 @@ def main():
             header_of_events.setdefault(symbol, header)
 
     wanted = None
-    if args.maps:
+    if maps:
         wanted = {m if m.startswith("events_") else "events_" + m
-                  for m in args.maps}
+                  for m in maps}
 
-    cache, findings, one_way, total = {}, [], [], 0
+    cache, findings, one_way_warps, total = {}, [], [], 0
     directory = fs.EVENTS_DIR
     for filename in sorted(os.listdir(directory)):
         if not filename.endswith(".json"):
@@ -124,26 +128,39 @@ def main():
                     f"only {len(target_warps)} warp(s)")
                 continue
 
-            if args.one_way:
+            if one_way:
                 landing = target_warps[warp_id]
                 returns = (landing.get("dest_header_id") == source_header
                            or landing.get("dest_header_id") == DYNAMIC)
                 if not returns:
-                    one_way.append(
+                    one_way_warps.append(
                         f"{where} -> {destination}[{warp_id}], which leads to "
                         f"{landing.get('dest_header_id')}")
 
-    for finding in findings:
+    return WarpReport(findings, one_way_warps, total)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("maps", nargs="*", help="map names (default: all)")
+    parser.add_argument("--one-way", action="store_true",
+                        help="also list warps with no return warp")
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+
+    report = check_warps(args.maps, args.one_way)
+
+    for finding in report.findings:
         print(finding)
-    if args.one_way and one_way:
-        print(f"\none-way warps ({len(one_way)}) - legal, listed for review:")
-        for entry in one_way:
+    if args.one_way and report.one_way:
+        print(f"\none-way warps ({len(report.one_way)}) - legal, listed for review:")
+        for entry in report.one_way:
             print(f"  {entry}")
 
     if not args.quiet:
-        print(f"\n{total} warp(s) checked, {len(findings)} finding(s)",
+        print(f"\n{report.total} warp(s) checked, {len(report.findings)} finding(s)",
               file=sys.stderr)
-    return 1 if findings else 0
+    return 1 if report.findings else 0
 
 
 if __name__ == "__main__":

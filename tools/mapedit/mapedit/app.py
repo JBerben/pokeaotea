@@ -121,7 +121,13 @@ class BlockGrid(Widget):
 
 
 class BrowserScreen(Screen):
-    BINDINGS = [Binding('escape', 'app.quit', 'Quit')]
+    # Ctrl keys, because the search box has focus and takes plain letters. Ctrl+K is Input's.
+    BINDINGS = [
+        Binding('escape', 'app.quit', 'Quit'),
+        Binding('ctrl+n', 'new_map', 'New map'),
+        Binding('ctrl+t', 'warps', 'Check warps'),
+        Binding('ctrl+f', 'free_state', 'Free flags'),
+    ]
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -151,6 +157,23 @@ class BrowserScreen(Screen):
     def on_option_list_option_selected(self, event: OptionList.OptionSelected):
         self.app.open_map(event.option.id)
 
+    def action_new_map(self):
+        from .reports import NewMapScreen
+        self.app.push_screen(NewMapScreen(self.app.repository.root), self.after_new_map)
+
+    def after_new_map(self, applied: bool | None):
+        if applied:
+            self.app.reload_repository()
+            self.show(self.app.repository.search(self.query_one('#search', Input).value))
+
+    def action_warps(self):
+        from .reports import WarpsScreen
+        self.app.push_screen(WarpsScreen())
+
+    def action_free_state(self):
+        from .reports import FreeStateScreen
+        self.app.push_screen(FreeStateScreen())
+
 
 class MapScreen(Screen):
     BINDINGS = [
@@ -161,6 +184,9 @@ class MapScreen(Screen):
         Binding('m', 'move', 'Move prop here'),
         Binding('d', 'delete', 'Delete prop'),
         Binding('r', 'register', 'Register prop'),
+        Binding('i', 'info', 'Map info'),
+        Binding('w', 'warps', 'Warps'),
+        Binding('f', 'free_state', 'Free flags'),
     ]
 
     DEFAULT_CSS = """
@@ -262,6 +288,19 @@ class MapScreen(Screen):
     def action_register(self):
         from .register import RegisterPropScreen
         self.app.push_screen(RegisterPropScreen(self.view), self.after_register)
+
+    def action_info(self):
+        from .reports import MapInfoScreen
+        self.app.push_screen(MapInfoScreen(self.view.header))
+
+    def action_warps(self):
+        from .reports import WarpsScreen
+        events = self.view.context.header(self.view.header).get('eventsArchiveID')
+        self.app.push_screen(WarpsScreen(events))
+
+    def action_free_state(self):
+        from .reports import FreeStateScreen
+        self.app.push_screen(FreeStateScreen())
 
     def confirm(self, make_change):
         try:
@@ -413,6 +452,18 @@ class MapEditApp(App):
     def on_mount(self):
         self.push_screen(BrowserScreen())
 
+    def no_blocks_reason(self, header: str) -> str:
+        matrix_id = self.repository.context.header(header).get('mapMatrixID')
+        matrix = self.repository.context.matrix(matrix_id)
+        if matrix['headers']:
+            return (f'{header} has no blocks: {matrix_id} names a header in every cell, and none is {header}. '
+                    f'Give it its own matrix, or name it in the cells it should own.')
+        return f'{header} has no land data blocks in {matrix_id}'
+
+    def reload_repository(self):
+        """Re-read headers and matrices after something (a new map) changed them."""
+        self.repository = maps.MapRepository(self.repository.root)
+
     def open_map(self, header: str):
         try:
             view = self.repository.load(header)
@@ -420,7 +471,7 @@ class MapEditApp(App):
             self.notify(f'cannot open {header}: {error}', severity='error')
             return
         if not view.blocks:
-            self.notify(f'{header} has no land data blocks', severity='warning')
+            self.notify(self.no_blocks_reason(header), severity='warning', timeout=10)
             return
         self.push_screen(MapScreen(view))
 
