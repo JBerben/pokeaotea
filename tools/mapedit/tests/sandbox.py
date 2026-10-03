@@ -45,6 +45,7 @@ MAP_SOURCES = [
 
 # What the renderer reads, on top of the above: models, animations, and the area's map textures.
 RENDER_TREES = [
+    'res/field/lighting',
     'res/field/props/models',
     'res/field/props/animations',
     'res/field/texture_animations',

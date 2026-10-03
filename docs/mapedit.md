@@ -63,8 +63,9 @@ The right side describes the tile under the cursor and lists the block's props.
 | `f` | free flags and variables |
 | `x` | the map's matrix |
 | `p` | show or hide a rendered preview of the block (the cursor tile is outlined on the top view) |
-| `v` | switch the preview between top-down and angled |
-| `t` | play the block's texture animations live (ground tiles, waterfalls); `t` again stops. Blocks with nothing animated say so |
+| `v` | cycle the preview: top-down, angled, and the game view (what the player sees standing on the cursor tile, with the map's weather fog; it follows the cursor) |
+| `t` | play the block's animations live (ground tiles, waterfalls, windmills); `t` again stops. Blocks with nothing animated say so |
+| `h` | cycle the preview's time of day: 12:00, 18:00, 23:00, 06:00 |
 
 **Matrix editor.** A grid of the matrix's cells: each shows its land data number,
 coloured by the header that owns it (`--` is no block). The side panel shows the
@@ -95,19 +96,32 @@ uv run --project tools/mapedit mapedit-render model waterfall.nsbmd --area-set 0
 - `--view top` (the default for maps) is orthographic with north up and frames the
   blocks exactly, so each block's 32 tiles span `size / blocks across` pixels;
   `--markers` dots warps (red), NPCs (cyan), signs (yellow) and triggers (green).
-  `--view angled` is a perspective view from the south.
+  `--view angled` is a perspective view from the south. `--view game` is the
+  overworld camera (`CAMERA_TYPE_DEFAULT`) looking at the tile given by
+  `--at X,Z` (world tiles; default the first block's centre), on a 4:3 image.
+- `--time HH:MM` (default 12:00) lights the scene with the area's lighting set at
+  that time of day, using the DS per-vertex lighting model; outdoor sets (000 and
+  003) also replace the materials' reflection colours, as in the game. Only
+  `lighting_set_000` changes through the day. `--unlit` draws flat vertex colours.
+- `--weather` sets the fog for `--view game`: by default the map header's own
+  weather, or a name such as `OVERWORLD_WEATHER_FOG`, or `none`. Fog settings come
+  from the weather tasks in `src/overlay005/ov5_021D5EB8.c`; other views have no
+  fog, since its depth range is tuned for the overworld camera. `--json` reports
+  the weather drawn.
 - `--animate` writes an animated GIF of the map's texture animations instead:
   the field's ground tiles (sea, beaches, flowers, lamps) and the props'
   self-playing NSBTA/NSBTP animations (waterfalls, signs), at the game's 30 frames a
-  second. `--frames N` sets how many game frames to render and `--step K` renders
-  every K-th one. Door, honey tree and bicycle slope animations only play when
-  triggered in the game, so they stay still.
+  second, plus self-playing joint (NSBCA) animations such as the Valley Windworks
+  windmills. `--frames N` sets how many game frames to render and `--step K`
+  renders every K-th one. Door, honey tree and bicycle slope animations only play
+  when triggered in the game, so they stay still.
 - `model` renders one model. By default its own embedded textures fill in for
   anything the given sets lack (handy before a prop is registered);
   `--no-embedded` renders it the way the game would.
 
 The map view's preview (`p`) uses the same renderer. It rasterises the block once
-and then only re-textures the animated surfaces each frame, so playback runs in
+and then only re-textures the animated surfaces each frame (props with joint
+animations are re-posed and redrawn against the stored depth), so playback runs in
 real time at the game's speed with no loop seams. How it is drawn depends on the
 terminal:
 
@@ -123,8 +137,8 @@ detection gets it wrong. Terminals that can show Sixel include Windows Terminal
 `terminal.integrated.enableImages` turned on); Kitty and Ghostty use the Kitty
 protocol.
 
-Not modelled yet: the DS lighting model, fog, toon shading, and joint (NSBCA)
-animations. Geometry and textures are checked against retail data: every
+Not modelled yet: toon shading, edge marking, and the weather's particles
+(rain, snow) - only its fog. Geometry and textures are checked against retail data: every
 model's triangle counts and bounds against its header, and every texture against
 `nitrobtx`'s dump.
 

@@ -222,8 +222,173 @@ class PropAnimations:
                     loaded.append(load_texture_srt(data))
                 elif data[:4] == b'BTP0':
                     loaded.append(load_texture_pattern(data))
+                elif data[:4] == b'BCA0':
+                    loaded.append(load_joint_animation(data))
             if loaded:
                 self.by_model[model.removesuffix('_nsbmd') + '.nsbmd'] = loaded
 
     def for_model(self, file_name: str) -> list:
-        return self.by_model.get(file_name, [])
+        """Texture animations (SRT and pattern) for a model."""
+        return [a for a in self.by_model.get(file_name, []) if not isinstance(a, JointAnimation)]
+
+    def joints_for_model(self, file_name: str) -> list:
+        return [a for a in self.by_model.get(file_name, []) if isinstance(a, JointAnimation)]
+
+
+# NSBCA joint animations (NitroSystem anm/nsbca.c).
+
+SRT_IDENTITY, SRT_IDENTITY_T, SRT_BASE_T = 0x0001, 0x0002, 0x0004
+SRT_CONST_TX, SRT_CONST_TY, SRT_CONST_TZ = 0x0008, 0x0010, 0x0020
+SRT_IDENTITY_R, SRT_BASE_R, SRT_CONST_R = 0x0040, 0x0080, 0x0100
+SRT_IDENTITY_S, SRT_BASE_S = 0x0200, 0x0400
+SRT_CONST_S = (0x0800, 0x1000, 0x2000)
+TRACK_STEP_MASK, TRACK_STEP_2, TRACK_FX16 = 0xC0000000, 0x40000000, 0x20000000
+TRACK_LAST_INTERP_MASK, TRACK_LAST_INTERP_SHIFT = 0x1FFF0000, 16
+ROTATION_PIVOT, ROTATION_INDEX_MASK = 0x8000, 0x7FFF
+BASE = 'base'      # use the model node's own value
+
+
+class JointSrt(NamedTuple):
+    translation: object      # (x, y, z), None for zero, or BASE
+    rotation: object         # 9 values, None for identity, or BASE
+    scale: object            # (x, y, z), None for one, or BASE
+
+
+def track_indices(info: int, frame: int):
+    """The samples a track uses at a frame and how to blend them, as in getTransData_ and friends."""
+    if not info & TRACK_STEP_MASK:
+        return [(frame, 1.0)]
+    last = (info & TRACK_LAST_INTERP_MASK) >> TRACK_LAST_INTERP_SHIFT
+    if info & TRACK_STEP_2:
+        if frame & 1:
+            if frame > last:
+                return [((last >> 1) + 1, 1.0)]
+            return [(frame >> 1, 0.5), ((frame >> 1) + 1, 0.5)]
+        return [(frame >> 1, 1.0)]
+    if frame & 3:
+        if frame > last:
+            return [((last >> 2) + (frame & 3), 1.0)]
+        if frame & 1:
+            if frame & 2:
+                return [((frame >> 2) + 1, 0.75), (frame >> 2, 0.25)]
+            return [(frame >> 2, 0.75), ((frame >> 2) + 1, 0.25)]
+        return [(frame >> 2, 0.5), ((frame >> 2) + 1, 0.5)]
+    return [(frame >> 2, 1.0)]
+
+
+@dataclass
+class JointAnimation:
+    data: bytes
+    anim: int
+    num_frames: int
+    nodes: list               # (node index, tag offset)
+    rot3: int
+    rot5: int
+
+    def value(self, info: int, offset: int, frame: int, stride: int = 1) -> float:
+        fx16 = bool(info & TRACK_FX16)
+        size, fmt = (2, '<h') if fx16 else (4, '<i')
+        head = self.anim + offset
+        return sum(weight * struct.unpack_from(fmt, self.data, head + index * stride * size)[0]
+                   for index, weight in track_indices(info, frame)) / FX
+
+    def rotation_by_index(self, index: int) -> np.ndarray:
+        if index & ROTATION_PIVOT:
+            base = self.anim + self.rot3 + (index & ROTATION_INDEX_MASK) * 6
+            info, a, b = struct.unpack_from('<Hhh', self.data, base)
+            from .model import pivot_rotation
+            return np.array(pivot_rotation(info & 0x0F, bool(info & 0x10), bool(info & 0x20), bool(info & 0x40),
+                                           a / FX, b / FX)).reshape(3, 3)
+        d = struct.unpack_from('<5h', self.data, self.anim + self.rot5 + (index & ROTATION_INDEX_MASK) * 10)
+        m12 = 0
+        for value in (d[4], d[0], d[1], d[2], d[3]):
+            m12 = (m12 << 3) | (value & 7)
+        m12 = (m12 & 0x1FFF) - 0x2000 if m12 & 0x1000 else m12 & 0x1FFF
+        row0 = np.array([d[0] >> 3, d[1] >> 3, d[2] >> 3]) / FX
+        row1 = np.array([d[3] >> 3, d[4] >> 3, m12]) / FX
+        return np.array([row0, row1, np.cross(row0, row1)])
+
+    def rotation(self, info: int, offset: int, frame: int) -> np.ndarray:
+        head = self.anim + offset
+        blended = sum(weight * self.rotation_by_index(struct.unpack_from('<H', self.data, head + index * 2)[0])
+                      for index, weight in track_indices(info, frame))
+        rows = blended / np.linalg.norm(blended, axis=1, keepdims=True)    # G3D_NORMALIZE_ROT_MTX
+        return rows
+
+    def srts_at(self, frame: int) -> dict:
+        """Each animated node's (translation, rotation, scale) at a frame, by node index."""
+        frame %= max(self.num_frames, 1)
+        result = {}
+        for node, tag_offset in self.nodes:
+            tag = struct.unpack_from('<I', self.data, self.anim + tag_offset)[0]
+            if tag & SRT_IDENTITY:
+                result[node] = JointSrt(None, None, None)
+                continue
+            p = self.anim + tag_offset + 4
+
+            def word(offset):
+                return struct.unpack_from('<I', self.data, offset)[0]
+
+            translation = None
+            if tag & SRT_BASE_T:
+                translation = BASE
+            elif not tag & SRT_IDENTITY_T:
+                values = []
+                for flag in (SRT_CONST_TX, SRT_CONST_TY, SRT_CONST_TZ):
+                    if tag & flag:
+                        values.append(struct.unpack_from('<i', self.data, p)[0] / FX)
+                        p += 4
+                    else:
+                        values.append(self.value(word(p), word(p + 4), frame))
+                        p += 8
+                translation = tuple(values)
+
+            rotation = None
+            if tag & SRT_BASE_R:
+                rotation = BASE
+            elif not tag & SRT_IDENTITY_R:
+                if tag & SRT_CONST_R:
+                    rotation = self.rotation_by_index(word(p) & 0xFFFF).reshape(-1).tolist()
+                    p += 4
+                else:
+                    rotation = self.rotation(word(p), word(p + 4), frame).reshape(-1).tolist()
+                    p += 8
+
+            scale = None
+            if tag & SRT_BASE_S:
+                scale = BASE
+            elif not tag & SRT_IDENTITY_S:
+                values = []
+                for flag in SRT_CONST_S:
+                    if tag & flag:
+                        values.append(struct.unpack_from('<i', self.data, p)[0] / FX)
+                    else:
+                        values.append(self.value(word(p), word(p + 4), frame, stride=2))
+                    p += 8
+                scale = tuple(values)
+            result[node] = JointSrt(translation, rotation, scale)
+        return result
+
+    def pose_at(self, frame: int, model_data: bytes) -> dict:
+        """Local matrices for the animated nodes of a model at a frame (node index -> matrix)."""
+        from . import model as nsbmd
+
+        offsets = nsbmd.node_offsets(model_data)
+        pose = {}
+        for node, srt in self.srts_at(frame).items():
+            if node >= len(offsets):
+                continue
+            base_trans, base_rot, base_scale = nsbmd.node_srt(model_data, offsets[node])
+            trans = base_trans if srt.translation == BASE else (srt.translation or (0.0, 0.0, 0.0))
+            rot = base_rot if srt.rotation == BASE else srt.rotation
+            scale = base_scale if srt.scale == BASE else srt.scale
+            pose[node] = nsbmd.compose_srt(trans, rot, scale)
+        return pose
+
+
+def load_joint_animation(data: bytes) -> JointAnimation:
+    anim = first_animation(data, b'JNT0')
+    num_frames, num_nodes, _flag, rot3, rot5 = struct.unpack_from('<HHIII', data, anim + 4)
+    tag_offsets = struct.unpack_from(f'<{num_nodes}H', data, anim + 0x14)
+    nodes = [(struct.unpack_from('<I', data, anim + offset)[0] >> 24, offset) for offset in tag_offsets]
+    return JointAnimation(data, anim, num_frames, nodes, rot3, rot5)

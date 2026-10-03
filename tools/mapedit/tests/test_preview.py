@@ -82,6 +82,30 @@ class PreviewTest(MapEditTestCase):
             self.assertEqual(self.app.screen.preview_view, 'angled')
             self.assertFalse(np.array_equal(top, preview.image))
 
+    async def test_v_cycles_through_the_game_view_at_the_cursor(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            preview = await self.open_preview(pilot)
+
+            await pilot.press('v', 'v')
+            await self.app.workers.wait_for_complete()
+            await pilot.pause()
+
+            self.assertEqual(self.app.screen.preview_view, 'game')
+            height, width = preview.image.shape[:2]
+            self.assertAlmostEqual(width / height, 4 / 3, delta=0.02)
+            first = preview.image
+
+            await pilot.press('right', 'right', 'right')
+            await pilot.pause(0.5)
+            await self.app.workers.wait_for_complete()
+            await pilot.pause()
+            self.assertFalse(np.array_equal(first, preview.image))
+
+            await pilot.press('v')
+            await self.app.workers.wait_for_complete()
+            await pilot.pause()
+            self.assertEqual(self.app.screen.preview_view, 'top')
+
     async def test_t_plays_the_waterfalls_in_real_time(self):
         for block in ('063', '064', '065'):
             self.sandbox.copy(f'res/field/maps/data/map_data_{block}.bin')
@@ -109,6 +133,22 @@ class PreviewTest(MapEditTestCase):
             self.assertFalse(self.app.screen.playing)
             messages = [notification.message for notification in self.app._notifications]
             self.assertTrue(any('no texture animations' in m for m in messages), messages)
+
+    async def test_h_cycles_the_time_of_day(self):
+        for block in ('063', '064', '065'):
+            self.sandbox.copy(f'res/field/maps/data/map_data_{block}.bin')
+        async with self.app.run_test(size=SIZE) as pilot:
+            preview = await self.open_preview(pilot, 'route 210 north')
+            noon = preview.image
+            self.assertEqual(self.app.screen.preview_time, 12 * 3600)
+
+            await pilot.press('h')
+            await self.app.workers.wait_for_complete()
+            await pilot.pause()
+
+            self.assertEqual(self.app.screen.preview_time, 18 * 3600)
+            self.assertIn('18:00', str(self.app.screen.query_one('#block-info').render()))
+            self.assertFalse(np.array_equal(noon, preview.image))
 
     async def test_the_cursor_tile_is_outlined_on_the_top_view(self):
         async with self.app.run_test(size=SIZE) as pilot:

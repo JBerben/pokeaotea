@@ -140,7 +140,8 @@ model sets and texture sets in one step) and place it with `tools/scripts/map_pr
 (`docs/mapedit.md`). Matrices: `tools/scripts/map_matrices.py` (`docs/maps/matrices.md`); every new tool
 is a library function plus a CLI with `--json`, which mapedit's screens call. To *see* a map or model,
 render it: `uv run --project tools/mapedit mapedit-render map MAP_HEADER_X -o x.png [--view angled] [--markers]`
-(then read the PNG); `--animate -o x.gif` renders texture animations.
+(then read the PNG); `--animate -o x.gif` renders texture and joint animations; `--time HH:MM` lights it
+for a time of day; `--view game --at X,Z` is the player's camera with the map's weather fog.
 
 ### Logging
 

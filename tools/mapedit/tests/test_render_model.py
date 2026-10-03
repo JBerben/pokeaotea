@@ -14,9 +14,9 @@ LAND_DATA = maps.REPO / 'res/field/maps/data'
 
 
 # Models whose header bounding box does not match their geometry. None is ever placed in land data:
-# door01 is spawned at runtime with a joint animation, and its box is of the animated pose; the others
-# are unused, and their boxes are offset along Z by their own depth (a converter quirk). Their triangle
-# and quad counts still match their headers.
+# door01 is only spawned at runtime (its animations are hinge rotations, which do not account for its box
+# offset either); the others are unused, and their boxes are offset along Z by their own depth (a converter
+# quirk). Their triangle and quad counts still match their headers.
 BOX_EXCEPTIONS = {'door01.nsbmd', 'prop_model_001.nsbmd', 'prop_model_002.nsbmd', 'prop_model_006.nsbmd',
                   'prop_model_018.nsbmd', 'prop_model_019.nsbmd', 'prop_model_021.nsbmd'}
 

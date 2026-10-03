@@ -56,6 +56,9 @@ class Primitive:
     uvs: np.ndarray                    # (n, 2), in texels
     colours: np.ndarray                # (n, 3), 0-1
     has_uv: bool = False
+    normals: np.ndarray = None         # (n, 3), world space, for lit vertices
+    lit: np.ndarray = None             # (n,) whether the vertex's colour comes from lighting (a NORMAL command)
+    coloured: np.ndarray = None        # (n,) whether a COLOR command set it
 
     def count_triangles(self) -> int:
         n = len(self.positions)
@@ -119,22 +122,28 @@ def decode_display_list(data: bytes, matrix: np.ndarray, stack: dict, engine: Ge
     words = struct.unpack(f'<{len(data) // 4}I', data[:len(data) // 4 * 4])
     primitives = []
     kind = None
-    positions, uvs, colours = [], [], []
+    positions, uvs, colours, normals, lit_flags, coloured_flags = [], [], [], [], [], []
     has_uv = False
     vertex = [0.0, 0.0, 0.0]       # untransformed, for the compact vertex commands
     uv = (0.0, 0.0)
     colour = (1.0, 1.0, 1.0)
+    normal = np.zeros(3)
+    lit = coloured = False         # the vertex colour comes from the last NORMAL, or from a COLOR
 
     def flush():
-        nonlocal positions, uvs, colours, has_uv
+        nonlocal positions, uvs, colours, normals, lit_flags, coloured_flags, has_uv
         if kind is not None and positions:
-            primitives.append(Primitive(kind, np.array(positions), np.array(uvs), np.array(colours), has_uv))
-        positions, uvs, colours, has_uv = [], [], [], False
+            primitives.append(Primitive(kind, np.array(positions), np.array(uvs), np.array(colours), has_uv,
+                                        np.array(normals), np.array(lit_flags), np.array(coloured_flags)))
+        positions, uvs, colours, normals, lit_flags, coloured_flags, has_uv = [], [], [], [], [], [], False
 
     def emit():
         positions.append(engine.transform(*vertex))
         uvs.append(uv)
         colours.append(colour)
+        normals.append(normal)
+        lit_flags.append(lit)
+        coloured_flags.append(coloured)
 
     index = 0
     while index < len(words):
@@ -175,6 +184,14 @@ def decode_display_list(data: bytes, matrix: np.ndarray, stack: dict, engine: Ge
                 has_uv = True
             elif op == 0x20:                                 # COLOR
                 colour = rgb555(params[0])
+                lit, coloured = False, True
+            elif op == 0x21:                                 # NORMAL, 1.0.9 each; lighting is computed now
+                raw = np.array([sign_extend(params[0] >> shift, 10) / 512 for shift in (0, 10, 20)])
+                # The vector matrix rotates normals but is never scaled, so renormalise after the turn.
+                turned = raw @ engine.current[:3, :3]
+                length = np.linalg.norm(turned)
+                normal = turned / length * np.linalg.norm(raw) if length else raw
+                lit, coloured = True, False
             elif op == 0x14:                                 # MTX_RESTORE
                 engine.current = engine.stack.get(params[0] & 31, np.eye(4)).copy()
             elif op == 0x13:                                 # MTX_STORE
@@ -230,6 +247,15 @@ class Material:
     orig_width: int = 0
     orig_height: int = 0
     flag: int = 0
+    ambient: tuple = (0.0, 0.0, 0.0)
+    specular: tuple = (0.0, 0.0, 0.0)
+    emission: tuple = (0.0, 0.0, 0.0)
+    diffuse_as_vertex_colour: bool = False
+
+    @property
+    def light_mask(self) -> int:
+        """Which of the four lights the material enables (polygon attribute bits 0-3)."""
+        return self.poly_attr & 0xF
 
 
 @dataclass
@@ -266,7 +292,9 @@ def read_materials(data: bytes, mat: int) -> list[Material]:
         diff_amb, spec_emi, poly_attr, _, tex_param, _, _, flag, orig_w, orig_h = struct.unpack_from('<IIIIIIHHHH', data, base + 4)
         materials.append(Material(name=name, diffuse=rgb555(diff_amb), alpha=((poly_attr >> 16) & 31) / 31,
                                   poly_attr=poly_attr, tex_image_param=tex_param, orig_width=orig_w,
-                                  orig_height=orig_h, flag=flag))
+                                  orig_height=orig_h, flag=flag, ambient=rgb555(diff_amb >> 16),
+                                  specular=rgb555(spec_emi), emission=rgb555(spec_emi >> 16),
+                                  diffuse_as_vertex_colour=bool(diff_amb & 0x8000)))
 
     for dict_offset, attribute in ((ofs_tex, 'texture'), (ofs_pltt, 'palette')):
         names, units = read_dict(data, mat + dict_offset)
@@ -277,8 +305,8 @@ def read_materials(data: bytes, mat: int) -> list[Material]:
     return materials
 
 
-def node_matrix(data: bytes, node: int) -> np.ndarray:
-    """The local transform (scale, then rotation, then translation) of a node, as a row-vector matrix."""
+def node_srt(data: bytes, node: int):
+    """A node's own (translation, rotation as 9 values or None, scale or None)."""
     flag, r00 = struct.unpack_from('<Hh', data, node)
     p = node + 4
     trans = (0.0, 0.0, 0.0)
@@ -289,34 +317,55 @@ def node_matrix(data: bytes, node: int) -> np.ndarray:
     if not flag & SRT_ROT_ZERO:
         if flag & SRT_PIVOT_EXIST:
             a, b = (v / FX for v in struct.unpack_from('<2h', data, p))
-            pivot = (flag & SRT_IDXPIVOT_MASK) >> SRT_IDXPIVOT_SHIFT
-            values = [0.0] * 9
-            values[pivot] = -1.0 if flag & SRT_PIVOT_MINUS else 1.0
-            u = PIVOT_UTIL[pivot]
-            values[u[0]], values[u[1]] = a, b
-            values[u[2]] = -b if flag & SRT_SIGN_REVC else b
-            values[u[3]] = -a if flag & SRT_SIGN_REVD else a
+            rot = pivot_rotation((flag & SRT_IDXPIVOT_MASK) >> SRT_IDXPIVOT_SHIFT, bool(flag & SRT_PIVOT_MINUS),
+                                 bool(flag & SRT_SIGN_REVC), bool(flag & SRT_SIGN_REVD), a, b)
             p += 4
         else:
-            values = [r00 / FX] + [v / FX for v in struct.unpack_from('<8h', data, p)]
+            rot = [r00 / FX] + [v / FX for v in struct.unpack_from('<8h', data, p)]
             p += 16
-        rot = values
     scale = None
     if not flag & SRT_SCALE_ONE:
         scale = tuple(v / FX for v in struct.unpack_from('<3i', data, p))
+    return trans, rot, scale
 
-    # The geometry engine receives translate (or 4x3 with rotation) first, then scale, each multiplied
-    # onto the current matrix, so the scale applies to vertices first.
-    m = np.eye(4)
-    if rot is not None:
-        m = matrix_3x3(rot) @ m
-    m = translate_matrix(*trans) @ m if rot is None else matrix_4x3(rot + list(trans))
+
+def pivot_rotation(pivot: int, minus: bool, reverse_c: bool, reverse_d: bool, a: float, b: float) -> list:
+    """A rotation stored as a pivot plus two values (NitroSystem's compressed form)."""
+    values = [0.0] * 9
+    values[pivot] = -1.0 if minus else 1.0
+    u = PIVOT_UTIL[pivot]
+    values[u[0]], values[u[1]] = a, b
+    values[u[2]] = -b if reverse_c else b
+    values[u[3]] = -a if reverse_d else a
+    return values
+
+
+def compose_srt(trans, rot, scale) -> np.ndarray:
+    """The geometry engine receives translate (or 4x3 with rotation) first, then scale, each multiplied
+    onto the current matrix, so the scale applies to vertices first."""
+    m = translate_matrix(*trans) if rot is None else matrix_4x3(list(rot) + list(trans))
     if scale is not None:
         m = scale_matrix(*scale) @ m
     return m
 
 
-def load_model(data: bytes, index: int = 0) -> Model:
+def node_matrix(data: bytes, node: int) -> np.ndarray:
+    """The local transform of a node, as a row-vector matrix."""
+    return compose_srt(*node_srt(data, node))
+
+
+def node_offsets(data: bytes, index: int = 0) -> list[int]:
+    """File offsets of each node's SRT data, by node index."""
+    mdl0 = struct.unpack_from('<I', data, 0x10)[0]
+    _, units = read_dict(data, mdl0 + 8)
+    model = mdl0 + struct.unpack('<I', units[index])[0]
+    node_info = model + 0x14 + 0x2C
+    _, node_units = read_dict(data, node_info)
+    return [node_info + struct.unpack('<I', unit)[0] for unit in node_units]
+
+
+def load_model(data: bytes, index: int = 0, pose: dict | None = None) -> Model:
+    """Decodes a model; pose maps node index -> local matrix, replacing those nodes' own transforms."""
     if data[0:4] != b'BMD0':
         raise ValueError(f'not an NSBMD file: magic is {data[0:4]!r}')
     mdl0 = struct.unpack_from('<I', data, 0x10)[0]
@@ -346,11 +395,11 @@ def load_model(data: bytes, index: int = 0) -> Model:
         ofs_dl, size_dl = struct.unpack_from('<II', data, base + 8)
         shapes.append(data[base + ofs_dl:base + ofs_dl + size_dl])
 
-    draws = run_sbc(data[model + ofs_sbc:model + ofs_mat], data, nodes, shapes, info)
+    draws = run_sbc(data[model + ofs_sbc:model + ofs_mat], data, nodes, shapes, info, pose or {})
     return Model(names[index], info, materials, draws)
 
 
-def run_sbc(sbc: bytes, data: bytes, nodes: list[int], shapes: list[bytes], info: ModelInfo) -> list[Draw]:
+def run_sbc(sbc: bytes, data: bytes, nodes: list[int], shapes: list[bytes], info: ModelInfo, pose: dict) -> list[Draw]:
     engine = GeometryEngine(np.eye(4), {})
     draws = []
     material = 0
@@ -375,7 +424,7 @@ def run_sbc(sbc: bytes, data: bytes, nodes: list[int], shapes: list[bytes], info
             if option in (0x40, 0x60):
                 restore = args[3] if option == 0x40 else args[4]
                 engine.current = engine.stack.get(restore, np.eye(4)).copy()
-            engine.multiply(node_matrix(data, nodes[args[0]]))
+            engine.multiply(pose[args[0]] if args[0] in pose else node_matrix(data, nodes[args[0]]))
             if option in (0x20, 0x60):
                 engine.stack[args[3]] = engine.current.copy()
         elif command in (SBC_BB, SBC_BBY):

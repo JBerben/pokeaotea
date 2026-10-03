@@ -36,8 +36,11 @@ def shade(positions: np.ndarray) -> float:
     return 0.7 + 0.3 * abs(normal @ LIGHT) / length
 
 
-def render(meshes, camera, shading: bool = True, background=(0, 0, 0, 0)) -> np.ndarray:
-    colour, _ = render_buffers(meshes, camera, shading, background)
+def render(meshes, camera, shading: bool = True, background=(0, 0, 0, 0), fog=None) -> np.ndarray:
+    colour, depth = render_buffers(meshes, camera, shading, background)
+    if fog is not None:
+        from . import fog as fogging
+        fogging.apply(colour, depth, fog)
     return to_bytes(colour)
 
 
@@ -111,20 +114,43 @@ class Baked:
     with the same opaque/translucent rules as render().
     """
 
-    def __init__(self, static_colour, meshes, fragments):
+    def __init__(self, static_colour, meshes, fragments, static_depth=None, camera=None, dynamic=None, shading=True,
+                 fog=None):
         self.static = static_colour
         self.meshes = meshes
         self.fragments = fragments          # dict of arrays, sorted far-to-near, with per-pixel layer ranks
+        self.static_depth = static_depth
+        self.camera = camera
+        self.dynamic = dynamic              # tick -> meshes that move (jointed props), drawn fresh each frame
+        self.shading = shading
+        self.fog = fog
 
     @property
     def animated(self) -> bool:
-        return len(self.fragments['ys']) > 0
+        return len(self.fragments['ys']) > 0 or self.dynamic is not None
 
     def frame(self, tick: int) -> np.ndarray:
         colour = self.static.copy()
+        depth = self.static_depth.copy() if self.static_depth is not None else None
+        self.composite_fragments(colour, depth, tick)
+        if self.dynamic is not None:
+            moving = self.dynamic(tick)
+            triangles = [(mesh, index) for mesh in moving for index in range(len(mesh.positions))]
+            for mesh, index in triangles:
+                draw_triangle(colour, depth, self.camera, mesh, index, self.shading, translucent=False)
+            centres = [project(self.camera, mesh.positions[index])[2].mean() for mesh, index in triangles]
+            for order in np.argsort(centres)[::-1]:
+                mesh, index = triangles[order]
+                draw_triangle(colour, depth, self.camera, mesh, index, self.shading, translucent=True)
+        if self.fog is not None:
+            from . import fog as fogging
+            fogging.apply(colour, depth, self.fog)
+        return to_bytes(colour)
+
+    def composite_fragments(self, colour, depth, tick: int):
         f = self.fragments
-        if not self.animated:
-            return to_bytes(colour)
+        if not len(f['ys']):
+            return
         rgb = np.zeros((len(f['ys']), 3))
         alpha = np.zeros(len(f['ys']))
         for mesh_id, mesh in enumerate(self.meshes):
@@ -143,14 +169,17 @@ class Baked:
             opaque = layer & (alpha >= OPAQUE)
             colour[f['ys'][opaque], f['xs'][opaque], :3] = rgb[opaque]
             colour[f['ys'][opaque], f['xs'][opaque], 3] = 1.0
+            if depth is not None:
+                depth[f['ys'][opaque], f['xs'][opaque]] = f['depth'][opaque]
             blended = layer & (alpha > ALPHA_DISCARD) & (alpha < OPAQUE)
             ys, xs, a = f['ys'][blended], f['xs'][blended], alpha[blended][:, None]
             colour[ys, xs, :3] = rgb[blended] * a + colour[ys, xs, :3] * (1 - a)
             colour[ys, xs, 3] = alpha[blended] + colour[ys, xs, 3] * (1 - alpha[blended])
-        return to_bytes(colour)
 
 
-def bake(static_meshes, animated_meshes, camera, shading: bool = True, background=(0, 0, 0, 0)) -> Baked:
+def bake(static_meshes, animated_meshes, camera, shading: bool = True, background=(0, 0, 0, 0), dynamic=None,
+         fog=None) -> Baked:
+    """Rasterises static meshes once and records animated meshes' fragments; dynamic(tick) gives moving meshes."""
     colour, depth = render_buffers(static_meshes, camera, shading, background)
     parts = {key: [] for key in ('ys', 'xs', 'depth', 'uv', 'factor', 'mesh')}
     for mesh_id, mesh in enumerate(animated_meshes):
@@ -166,7 +195,7 @@ def bake(static_meshes, animated_meshes, camera, shading: bool = True, backgroun
     if not parts['ys']:
         empty = {key: np.zeros(0, dtype=int) for key in ('ys', 'xs', 'mesh', 'rank')}
         empty.update(depth=np.zeros(0), uv=np.zeros((0, 2)), factor=np.zeros((0, 3)))
-        return Baked(colour, animated_meshes, empty)
+        return Baked(colour, animated_meshes, empty, depth, camera, dynamic, shading, fog)
     fragments = {key: np.concatenate(value) for key, value in parts.items()}
     # Far-to-near within each pixel; rank = how many fragments of the same pixel come before.
     pixel = fragments['ys'] * camera.width + fragments['xs']
@@ -176,7 +205,7 @@ def bake(static_meshes, animated_meshes, camera, shading: bool = True, backgroun
     starts = np.r_[0, np.nonzero(np.diff(pixel))[0] + 1]
     first = np.repeat(starts, np.diff(np.r_[starts, len(pixel)]))
     fragments['rank'] = np.arange(len(pixel)) - first
-    return Baked(colour, animated_meshes, fragments)
+    return Baked(colour, animated_meshes, fragments, depth, camera, dynamic, shading, fog)
 
 
 def draw_triangle(colour, depth, camera, mesh, index, shading: bool, translucent: bool):

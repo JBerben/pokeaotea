@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image
 
 from .. import maps
-from . import map_render, scene
+from . import lighting, map_render, scene
 
 
 def write_gif(frames, path: Path, frame_ms: float):
@@ -37,6 +37,11 @@ def main(argv: list[str] | None = None) -> int:
     map_parser.add_argument('--block', action='append', help='only this land data block (e.g. 005); repeatable')
     map_parser.add_argument('--no-props', action='store_true')
     map_parser.add_argument('--markers', action='store_true', help='dot events on the top view')
+    map_parser.add_argument('--time', default='12:00', help='time of day, HH:MM (default 12:00); only some areas change')
+    map_parser.add_argument('--unlit', action='store_true', help='skip DS lighting (flat vertex colours)')
+    map_parser.add_argument('--at', help='with --view game: the tile the player stands on, X,Z (default: block centre)')
+    map_parser.add_argument('--weather', default=map_render.MAP_WEATHER,
+                            help="fog for --view game: a weather such as OVERWORLD_WEATHER_FOG, 'none', or the map's own (default)")
     map_parser.add_argument('--animate', action='store_true', help='write an animated GIF of the texture animations')
     map_parser.add_argument('--frames', type=int, default=30, help='with --animate: game frames to render (30 per second)')
     map_parser.add_argument('--step', type=int, default=1, help='with --animate: game frames between images')
@@ -49,7 +54,8 @@ def main(argv: list[str] | None = None) -> int:
 
     for command in (map_parser, model_parser):
         command.add_argument('-o', '--output', type=Path, required=True, help='PNG to write')
-        command.add_argument('--view', choices=('top', 'angled'), default='angled' if command is model_parser else 'top')
+        views = ('top', 'angled', 'game') if command is map_parser else ('top', 'angled')
+        command.add_argument('--view', choices=views, default='angled' if command is model_parser else 'top')
         command.add_argument('--size', type=int, default=1024, help='longest side in pixels')
         command.add_argument('--json', action='store_true', help='machine-readable report')
 
@@ -63,11 +69,23 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
+        time, at, weather = None, None, None
+        if args.command == 'map':
+            if not args.unlit:
+                time = lighting.parse_time(args.time)
+            if args.at:
+                try:
+                    at = tuple(int(v) for v in args.at.split(','))
+                    assert len(at) == 2
+                except (ValueError, AssertionError):
+                    return fail(f'--at must be X,Z world tiles, not {args.at!r}')
+            weather = None if args.weather == 'none' else args.weather
         if args.command == 'map' and args.animate:
             repository = maps.MapRepository(args.root)
             ticks = list(range(0, args.frames * args.step, args.step))
             frames = map_render.render_frames(repository, args.header, ticks, view=args.view, size=args.size,
-                                              props=not args.no_props, markers=args.markers, blocks=args.block)
+                                              props=not args.no_props, markers=args.markers, blocks=args.block, time=time,
+                                              at=at, weather=weather)
             write_gif(frames, args.output, 1000 * args.step / 30)
             report = {'output': str(args.output), 'width': frames[0].shape[1], 'height': frames[0].shape[0],
                       'frames': len(frames)}
@@ -75,9 +93,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == 'map':
             result = map_render.render_map(maps.MapRepository(args.root), args.header, view=args.view, size=args.size,
-                                           props=not args.no_props, markers=args.markers, blocks=args.block)
+                                           props=not args.no_props, markers=args.markers, blocks=args.block, time=time,
+                                           at=at, weather=weather)
             image, report = result.image, {'blocks': result.blocks, 'props': result.props,
-                                           'missing_textures': result.missing_textures}
+                                           'missing_textures': result.missing_textures,
+                                           'time': lighting.format_time(time) if time is not None else None,
+                                           'weather': result.weather}
         else:
             texture_sets = [path.read_bytes() for path in args.textures]
             if args.area_set:

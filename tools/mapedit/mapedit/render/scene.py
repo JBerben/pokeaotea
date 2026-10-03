@@ -106,8 +106,30 @@ def material_state(material, animations, tick):
     return texture_name, palette_name, srt
 
 
+def primitive_colours(primitive, material, environment) -> np.ndarray:
+    """Vertex colours: lit by the environment where a NORMAL set them, as given by COLOR, or the material's."""
+    from . import lighting
+
+    colours = primitive.colours.copy()
+    if environment is None or primitive.lit is None:
+        return colours
+    reflection = environment.reflection_override or lighting.Reflection(
+        np.array(material.diffuse), np.array(material.ambient), np.array(material.specular), np.array(material.emission))
+    lit = primitive.lit.astype(bool)
+    if lit.any():
+        colours[lit] = lighting.vertex_colours(primitive.normals[lit], reflection, environment.lights,
+                                               material.light_mask, environment.view)
+    # Before any COLOR or NORMAL, the vertex colour is the material's diffuse when it says so; the area's
+    # override (ModelAttributes_SetDiffuseReflection with setDiffuseColorAsVertexColor FALSE) never does.
+    plain = ~lit & ~primitive.coloured.astype(bool)
+    if plain.any() and environment.reflection_override is None and material.diffuse_as_vertex_colour:
+        colours[plain] = material.diffuse
+    return colours
+
+
 def meshes_from_model(model: nsbmd.Model, library: TextureLibrary, transform: np.ndarray | None = None,
-                      animations=(), tick: int | None = None, ground=None, animate: bool = False) -> list[Mesh]:
+                      animations=(), tick: int | None = None, ground=None, animate: bool = False,
+                      environment=None) -> list[Mesh]:
     """Meshes for each draw.
 
     With a tick, texture animations (SRT tracks, pattern swaps) are applied at that frame. With animate,
@@ -129,10 +151,11 @@ def meshes_from_model(model: nsbmd.Model, library: TextureLibrary, transform: np
         wrap = (bool(param & REPEAT_S), bool(param & REPEAT_T), bool(param & FLIP_S), bool(param & FLIP_T))
         positions, uvs, colours = [], [], []
         for primitive in draw.primitives:
+            vertex_colour = primitive_colours(primitive, material, environment)
             for a, b, c in primitive.triangles():
                 positions.append(primitive.positions[[a, b, c]])
                 uvs.append(primitive.uvs[[a, b, c]])
-                colours.append(primitive.colours[[a, b, c]])
+                colours.append(vertex_colour[[a, b, c]])
         if not positions:
             continue
         positions = np.array(positions)
@@ -211,7 +234,35 @@ def look_at(eye: np.ndarray, target: np.ndarray) -> np.ndarray:
     return view
 
 
-def angled_camera(low: np.ndarray, high: np.ndarray, size: int, pitch_degrees: float = 40.0,
+# The overworld camera (CAMERA_TYPE_DEFAULT in src/overlay005/field_camera.c, clip planes from camera.h).
+GAME_PITCH_DEGREES = 59.051513671875
+GAME_DISTANCE = 666.922119140625
+GAME_HALF_FOV_DEGREES = 8.0914306640625
+GAME_NEAR, GAME_FAR = 150.0, 900.0
+GAME_ASPECT = 256 / 192
+
+
+def perspective(half_fov_degrees: float, aspect: float, near: float, far: float) -> np.ndarray:
+    f = 1 / np.tan(np.radians(half_fov_degrees))
+    projection = np.zeros((4, 4))
+    projection[0, 0] = f / aspect
+    projection[1, 1] = f
+    projection[2, 2] = (far + near) / (near - far)
+    projection[2, 3] = -1
+    projection[3, 2] = 2 * far * near / (near - far)
+    return projection
+
+
+def game_camera(target: np.ndarray, size: int) -> Camera:
+    """What the player sees: the overworld camera looking north and down at target, on a 4:3 screen."""
+    pitch = np.radians(GAME_PITCH_DEGREES)
+    eye = np.asarray(target, dtype=float) + GAME_DISTANCE * np.array([0.0, np.sin(pitch), np.cos(pitch)])
+    view = look_at(eye, np.asarray(target, dtype=float))
+    projection = perspective(GAME_HALF_FOV_DEGREES, GAME_ASPECT, GAME_NEAR, GAME_FAR)
+    return Camera(view @ projection, size, round(size / GAME_ASPECT), perspective=True)
+
+
+def angled_camera(low: np.ndarray, high: np.ndarray, size: int, pitch_degrees: float = GAME_PITCH_DEGREES,
                   fov_degrees: float = 30.0) -> Camera:
     """Perspective from the south, looking down at pitch_degrees, like the overworld camera."""
     centre = (low + high) / 2

@@ -24,6 +24,10 @@ from .image_view import MODES, ImageView
 PREVIEW_MIN_PIXELS = 128
 PREVIEW_MAX_PIXELS = 768
 PREVIEW_FPS = 15
+# Times of day the preview cycles through with h: noon, evening, night, morning.
+PREVIEW_TIMES = (12 * 3600, 18 * 3600, 23 * 3600, 6 * 3600)
+# Views v cycles through: top-down, angled over the block, and what the player sees standing at the cursor.
+PREVIEW_VIEWS = ('top', 'angled', 'game')
 
 MARKER_PRIORITY = ['prop', 'warp', 'npc', 'sign', 'trigger']
 MARKER_SYMBOLS = {'prop': 'P', 'warp': 'W', 'npc': 'N', 'sign': 'S', 'trigger': 'T'}
@@ -221,6 +225,7 @@ class MapScreen(Screen):
         Binding('p', 'preview', 'Preview'),
         Binding('v', 'preview_view', 'Top/angled'),
         Binding('t', 'animate', 'Animate'),
+        Binding('h', 'preview_time', 'Time of day'),
     ]
 
     DEFAULT_CSS = """
@@ -236,6 +241,8 @@ class MapScreen(Screen):
         self.view = view
         self.block_index = 0
         self.preview_view = 'top'
+        self.follow_timer = None
+        self.preview_time = PREVIEW_TIMES[0]
         self.animate = False
         self.playing = False
         self.play_start = 0.0
@@ -269,7 +276,8 @@ class MapScreen(Screen):
         block = self.grid.block
         self.query_one('#block-info', Static).update(
             f'{block.name}  (block {self.block_index + 1} of {len(self.view.blocks)}, {block.extent()})\n'
-            f'{self.view.area} → {self.view.model_set} ({len(self.view.models)} models)')
+            f'{self.view.area} → {self.view.model_set} ({len(self.view.models)} models)'
+            f'   preview at {self.preview_time // 3600:02}:00')
         self.grid.refresh_markers()
         table = self.query_one('#props', DataTable)
         selected = table.cursor_row
@@ -283,6 +291,7 @@ class MapScreen(Screen):
 
     def on_block_grid_cursor_moved(self, message: 'BlockGrid.CursorMoved'):
         self.describe_cursor()
+        self.follow_cursor()
 
     def describe_cursor(self):
         grid = self.grid
@@ -392,7 +401,20 @@ class MapScreen(Screen):
             self.stop_playing()
 
     def action_preview_view(self):
-        self.preview_view = 'angled' if self.preview_view == 'top' else 'top'
+        self.preview_view = PREVIEW_VIEWS[(PREVIEW_VIEWS.index(self.preview_view) + 1) % len(PREVIEW_VIEWS)]
+        self.request_render()
+
+    def follow_cursor(self):
+        """The game view looks at the cursor; re-render once it has rested, not on every step."""
+        if self.preview_view != 'game' or not self.preview.display:
+            return
+        if self.follow_timer is not None:
+            self.follow_timer.stop()
+        self.follow_timer = self.set_timer(0.3, self.request_render)
+
+    def action_preview_time(self):
+        self.preview_time = PREVIEW_TIMES[(PREVIEW_TIMES.index(self.preview_time) + 1) % len(PREVIEW_TIMES)]
+        self.refresh_block()
         self.request_render()
 
     def action_animate(self):
@@ -410,12 +432,14 @@ class MapScreen(Screen):
             return
         from .render import map_render
         repository, header, block = self.app.repository, self.view.header, self.grid.block.land_data
-        view = self.preview_view
+        view, time, at = self.preview_view, self.preview_time, self.grid.cursor
         size = min(max(max(self.preview.pixel_size()), PREVIEW_MIN_PIXELS), PREVIEW_MAX_PIXELS)
 
         def work():
-            return map_render.bake_map(repository, header, view=view, size=size, blocks=[block],
-                                       animations=self.app.animations)
+            # The game view shows the whole map around the player; the others show the current block.
+            blocks = None if view == 'game' else [block]
+            return map_render.bake_map(repository, header, view=view, size=size, blocks=blocks,
+                                       animations=self.app.animations, time=time, at=at)
 
         self.run_worker(work, thread=True, exclusive=True, group='preview', name='preview')
 
