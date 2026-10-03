@@ -29,6 +29,44 @@ with the same ID, one texture set (`mapPropSet`).
 The animation lists and draw lists are built by `tools/scripts/make_prop_tables.py`,
 which validates everything first and lists every problem it finds.
 
+## Adding a prop
+
+`tools/scripts/new_prop.py` registers a model, its animations and its textures in
+one step, and writes nothing unless every step can be done:
+
+```bash
+python3 tools/scripts/new_prop.py route_201_waterfall \
+    --model waterfall.nsbmd --animation waterfall.nsbta \
+    --model-set 12 --dry-run
+```
+
+It copies the model to `models/<name>.nsbmd` and each animation to
+`animations/<name>_<i>.<ext>` (index = order given, the extension from the file's
+magic), registers them in the `meson.build` and `.order` files, writes the
+animation list entry, adds the model to each `--model-set`, and appends its
+textures to the matching prop texture sets. The `--deferred-loading`,
+`--deferred-add-to-render-obj` and `--bicycle-slope` flags set the animation list
+flags described below; an ambient animation such as a waterfall needs none of them.
+
+Textures come from `--textures` (an NSBTX) or, by default, from the textures
+embedded in the model. The tool checks that the source holds every texture and
+palette the model's materials bind. Appending never rewrites what is already in a
+texture set: new textures and palettes go after the existing data, and one whose
+name is already in the set is shared if identical, or rejected if not, since the
+game would bind the existing one. 4x4 compressed textures are not supported.
+
+The draw list needs no edit, and placing the prop on a map is a separate step
+(the `mapProps` section of the map's land data).
+
+### A worked reference: the retail waterfalls
+
+Retail Platinum already has waterfall props, `prop_model_305` to `prop_model_310`.
+They use the textures `taki` (waterfall), `taki_top` and `kemuri` (mist), and all
+play `prop_animation_018.nsbta`, a texture coordinate (scroll) animation, with no
+animation flags. They are in model sets 005, 006, 009, 012, 049 and 065 to 067.
+Converting one with apicula is a good way to see how the materials and the scroll
+are set up before building your own.
+
 ## Textures come from the area, not the model
 
 `AreaDataManager_Load` (`src/overlay005/area_data.c`) binds every prop model of an

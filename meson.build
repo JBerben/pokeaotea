@@ -375,6 +375,18 @@ test('Map Prop Tables - Builder Tests',
     workdir: meson.project_source_root()
 )
 
+test('Map Props - Texture Set Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_nitro_textures'],
+    workdir: meson.project_source_root()
+)
+
+test('Map Props - New Prop Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_new_prop'],
+    workdir: meson.project_source_root()
+)
+
 
 ############################################################
 ###                       POSTCONF                       ###

@@ -38,12 +38,6 @@ def read_narc_members(data: bytes) -> list[bytes]:
     return [data[base + start:base + end] for start, end in ranges]
 
 
-def format_animation_lists(animation_lists: dict) -> str:
-    # One model per line keeps the file scannable and diffs small.
-    lines = [f'    {json.dumps(model)}: {json.dumps(entry)}' for model, entry in animation_lists.items()]
-    return '{\n' + ',\n'.join(lines) + '\n}\n'
-
-
 def format_draw_orders(overrides: dict) -> str:
     blocks = []
     for model, draws in overrides.items():
@@ -96,7 +90,7 @@ def main(argv: list[str]) -> int:
         print('extracted data does not rebuild the input exactly; nothing written', file=sys.stderr)
         return 1
 
-    (ANIMATIONS_DIR / 'prop_animation_lists.json').write_text(format_animation_lists(animation_lists), encoding='utf-8')
+    (ANIMATIONS_DIR / 'prop_animation_lists.json').write_text(mpt.format_animation_lists(animation_lists), encoding='utf-8')
     (MODELS_DIR / 'draw_order_overrides.json').write_text(format_draw_orders(overrides), encoding='utf-8')
     print(f'{len(animation_lists)} animated models, {len(overrides)} draw order overrides')
     return 0

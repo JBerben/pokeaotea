@@ -134,7 +134,8 @@ built from `res/field/texture_animations/`; see `docs/maps/texture_animations.md
 
 Map props (`res/field/props/`) take their textures from the area's prop texture set, not the model.
 Per-model animation lists are JSON and draw lists are derived from the models by
-`tools/scripts/make_prop_tables.py`; see `docs/maps/props.md`.
+`tools/scripts/make_prop_tables.py`. Add a new prop with `tools/scripts/new_prop.py` (model, animations,
+model sets and texture sets in one step); see `docs/maps/props.md`.
 
 ### Logging
 

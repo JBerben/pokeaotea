@@ -163,6 +163,19 @@ def read_model_draw_info(data: bytes) -> ModelDrawInfo:
     )
 
 
+def read_model_texture_references(data: bytes) -> tuple[list[str], list[str]]:
+    """Texture and palette names the first model's materials bind to (NNS_G3dBindMdlSet looks these up by name)."""
+    if data[0:4] != b'BMD0':
+        raise ValueError(f'not an NSBMD file: magic is {data[0:4]!r}, expected BMD0')
+
+    mdl0 = struct.unpack_from('<I', data, 0x10)[0]
+    model = mdl0 + read_dict_offsets(data, mdl0 + 8)[0]
+    material_block = model + struct.unpack_from('<I', data, model + 8)[0]
+    ofs_texture_dict, ofs_palette_dict = struct.unpack_from('<HH', data, material_block)
+
+    return read_dict_names(data, material_block + ofs_texture_dict), read_dict_names(data, material_block + ofs_palette_dict)
+
+
 def default_draw_order(draws: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return sorted(draws, key=lambda draw: draw[0])
 
@@ -360,6 +373,12 @@ def load_inputs(models_order: Path, animations_order: Path, animation_lists_path
     overrides = json.loads(draw_order_path.read_text(encoding='utf-8'))
 
     return models, animations, infos, animation_lists, overrides
+
+
+def format_animation_lists(animation_lists: dict) -> str:
+    # One model per line keeps the file scannable and diffs small.
+    lines = [f'    {json.dumps(model)}: {json.dumps(entry)}' for model, entry in animation_lists.items()]
+    return '{\n' + ',\n'.join(lines) + '\n}\n'
 
 
 def pack_animation_lists(members: list[bytes], nitroarc: Path, staging: Path, output: Path):

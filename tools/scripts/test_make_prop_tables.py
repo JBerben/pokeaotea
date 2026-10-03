@@ -16,6 +16,7 @@ REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
 import make_prop_tables as mpt  # noqa: E402
+import nitro_textures as nt  # noqa: E402
 
 PROPS_DIR = REPO / 'res' / 'field' / 'props'
 MODELS_DIR = PROPS_DIR / 'models'
@@ -99,6 +100,32 @@ class ReadModelDrawInfoTest(unittest.TestCase):
     def test_rejects_files_that_are_not_nsbmd(self):
         with self.assertRaisesRegex(ValueError, 'not an NSBMD'):
             mpt.read_model_draw_info(b'BTX0' + bytes(60))
+
+
+class ReadModelTextureReferencesTest(unittest.TestCase):
+    def test_names_match_the_textures_embedded_in_retail_models(self):
+        # The retail converter embeds exactly the textures and palettes a model's materials bind.
+        for name in ('prop_model_305.nsbmd', 'prop_model_005.nsbmd', 'honey_tree.nsbmd'):
+            data = (MODELS_DIR / name).read_bytes()
+            embedded = nt.read_texture_set(data)
+
+            textures, palettes = mpt.read_model_texture_references(data)
+
+            with self.subTest(model=name):
+                self.assertEqual(sorted(textures), sorted(t.name for t in embedded.textures()))
+                self.assertEqual(sorted(palettes), sorted(p.name for p in embedded.palettes()))
+
+    def test_retail_waterfall_binds_its_water_and_mist_textures(self):
+        textures, _ = mpt.read_model_texture_references((MODELS_DIR / 'prop_model_305.nsbmd').read_bytes())
+
+        self.assertEqual(sorted(textures), ['kemuri', 'taki', 'taki_top'])
+
+
+class FormatAnimationListsTest(unittest.TestCase):
+    def test_committed_file_is_in_canonical_format(self):
+        text = ANIMATION_LISTS_JSON.read_text(encoding='utf-8')
+
+        self.assertEqual(mpt.format_animation_lists(json.loads(text)), text)
 
 
 class DefaultDrawOrderTest(unittest.TestCase):
