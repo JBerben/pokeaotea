@@ -138,7 +138,9 @@ Per-model animation lists are JSON and draw lists are derived from the models by
 model sets and texture sets in one step) and place it with `tools/scripts/map_props.py`; see
 `docs/maps/props.md`. `uv run --project tools/mapedit mapedit` is a Textual TUI over these scripts
 (`docs/mapedit.md`). Matrices: `tools/scripts/map_matrices.py` (`docs/maps/matrices.md`); every new tool
-is a library function plus a CLI with `--json`, which mapedit's screens call.
+is a library function plus a CLI with `--json`, which mapedit's screens call. To *see* a map or model,
+render it: `uv run --project tools/mapedit mapedit-render map MAP_HEADER_X -o x.png [--view angled] [--markers]`
+(then read the PNG).
 
 ### Logging
 

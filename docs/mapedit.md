@@ -71,6 +71,37 @@ its own copy of its land data; Enter opens the map that owns the cell. See
 [maps/matrices.md](maps/matrices.md).
 | Esc | back to the browser |
 
+## Rendering maps and models
+
+`mapedit-render` draws maps and models to PNG with a small software renderer
+(`tools/mapedit/mapedit/render/`), so you can see a map - or have an AI agent look
+at one - without building the ROM:
+
+```bash
+uv run --project tools/mapedit mapedit-render map MAP_HEADER_TWINLEAF_TOWN -o twinleaf.png
+uv run --project tools/mapedit mapedit-render map MAP_HEADER_TWINLEAF_TOWN --view angled -o twinleaf_3d.png
+uv run --project tools/mapedit mapedit-render map MAP_HEADER_TWINLEAF_TOWN --markers -o events.png
+uv run --project tools/mapedit mapedit-render model waterfall.nsbmd --area-set 012 -o waterfall.png --json
+```
+
+- `map` renders every block of a map header at its matrix position and altitude:
+  the land data's map model, textured from the area's map texture set, and each
+  placed prop, textured only from the area's prop texture set - the same binding
+  the game does, so a prop whose textures are missing from the area renders
+  white here too. `--json` lists those missing textures.
+- `--view top` (the default for maps) is orthographic with north up and frames the
+  blocks exactly, so each block's 32 tiles span `size / blocks across` pixels;
+  `--markers` dots warps (red), NPCs (cyan), signs (yellow) and triggers (green).
+  `--view angled` is a perspective view from the south.
+- `model` renders one model. By default its own embedded textures fill in for
+  anything the given sets lack (handy before a prop is registered);
+  `--no-embedded` renders it the way the game would.
+
+Not modelled yet: the DS lighting model, fog, toon shading and texture
+animations. Geometry and textures are checked against retail data: every
+model's triangle counts and bounds against its header, and every texture against
+`nitrobtx`'s dump.
+
 ## How it writes
 
 mapedit never edits files itself. Every change is built by the same code as the

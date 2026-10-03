@@ -415,7 +415,9 @@ if uv_exe.found()
         args: ['run', '--project', 'tools/mapedit', 'python', '-m', 'unittest', 'discover',
                '-s', 'tools/mapedit/tests', '-t', 'tools/mapedit'],
         workdir: meson.project_source_root(),
-        timeout: 300,
+        # The renderer's texture tests compare against nitrobtx's dumps.
+        depends: nitrobtx_exe,
+        timeout: 600,
     )
 endif
 
