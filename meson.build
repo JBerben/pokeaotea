@@ -387,6 +387,12 @@ test('Map Props - New Prop Tests',
     workdir: meson.project_source_root()
 )
 
+test('Map Props - Placement Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_map_props'],
+    workdir: meson.project_source_root()
+)
+
 
 ############################################################
 ###                       POSTCONF                       ###

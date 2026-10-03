@@ -55,8 +55,37 @@ texture set: new textures and palettes go after the existing data, and one whose
 name is already in the set is shared if identical, or rejected if not, since the
 game would bind the existing one. 4x4 compressed textures are not supported.
 
-The draw list needs no edit, and placing the prop on a map is a separate step
-(the `mapProps` section of the map's land data).
+The draw list needs no edit. Placing the prop on a map is the next step.
+
+## Placing props on a map
+
+`tools/scripts/map_props.py` edits the `mapProps` section of a map's land data:
+
+```bash
+python3 tools/scripts/map_props.py list MAP_HEADER_TWINLEAF_TOWN
+python3 tools/scripts/map_props.py add MAP_HEADER_TWINLEAF_TOWN route_201_waterfall --x 112 --z 880 --dry-run
+python3 tools/scripts/map_props.py move MAP_HEADER_TWINLEAF_TOWN 000:8 --y 2.5
+python3 tools/scripts/map_props.py remove MAP_HEADER_TWINLEAF_TOWN 000:8
+```
+
+- **Coordinates** are world tiles, the same ones events and `check_tile.py` use. A
+  whole number is the centre of that tile; fractions are allowed (retail buildings
+  often sit on half tiles). Internally a prop's position is an offset from the
+  centre of its 32x32 block (`LandDataManager_CalculateRenderingPosition`).
+- **Height** is in tiles (16 units) above the block's base. `add` defaults it to the
+  BDHC ground at that point, computed as the game does, and asks for `--y` when there
+  is no ground there or several layers (a bridge). About 60% of retail props sit
+  exactly on the ground; cliff-top and wall-mounted props do not.
+- **Prop ids** are `<land data>:<index>`, as `list` prints them. Removing a prop moves
+  the later ones in that block up one index.
+- **Rotation is ignored** for placed props: `MapPropManager_Render` draws them
+  unrotated, and every retail prop has a rotation of 0. Rotate the model itself. Scale
+  is applied (`--scale`).
+- **The model must be in the area's model set**, or the game silently draws the dummy
+  box instead; `add` refuses and names the set to add it to.
+- **Land data can be shared.** Every Poké Mart, for example, uses the same land data
+  file, so a prop added to one appears in all of them. The tool lists every other map
+  that an edit affects.
 
 ### A worked reference: the retail waterfalls
 
