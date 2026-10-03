@@ -37,6 +37,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fieldscript as fs  # noqa: E402
+import map_matrices  # noqa: E402
 
 class Paths:
     """Every file new_map reads or writes, under one repository root."""
@@ -134,12 +135,13 @@ class Plan:
             print(line)
 
     def apply(self):
-        for path, content in self.creates:
-            with open(path, "w", encoding="utf-8", newline="") as handle:
-                handle.write(content)
-        for path, _, content in self.edits:
-            with open(path, "w", encoding="utf-8", newline="") as handle:
-                handle.write(content)
+        for path, content in self.creates + [(path, content) for path, _, content in self.edits]:
+            if isinstance(content, bytes):
+                with open(path, "wb") as handle:
+                    handle.write(content)
+            else:
+                with open(path, "w", encoding="utf-8", newline="") as handle:
+                    handle.write(content)
 
 
 def read(path, newline=""):
@@ -177,7 +179,7 @@ def next_text_bank_key(text_dir):
     return highest + 1
 
 
-def header_block(new_header, template_header, name, map_headers_h):
+def header_block(new_header, template_header, name, map_headers_h, matrix_id=None):
     """A map header entry copying the template's geometry."""
     text = read(map_headers_h)
     match = re.search(r"\[" + re.escape(template_header) + r"\]\s*=\s*\{(.*?)\n    \}",
@@ -190,6 +192,8 @@ def header_block(new_header, template_header, name, map_headers_h):
         "msgArchiveID": "TEXT_BANK_" + name.upper(),
         "eventsArchiveID": f"events_{name}",
     }
+    if matrix_id is not None:
+        replacements["mapMatrixID"] = matrix_id
     lines = []
     for line in match.group(1).strip("\n").split("\n"):
         field = re.match(r"\s*\.(\w+)\s*=", line)
@@ -202,9 +206,11 @@ def header_block(new_header, template_header, name, map_headers_h):
     return f"    [{new_header}] = {{\n{body}\n    }},\n"
 
 
-def build_plan(name, label, add_header, template_header, root=fs.ROOT):
+def build_plan(name, label, add_header, template_header, root=fs.ROOT, own_matrix=False):
     if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
         raise NewMapError("name must be lower snake_case")
+    if own_matrix and not add_header:
+        raise NewMapError("--own-matrix needs --header: the matrix belongs to the new header")
 
     paths = Paths(root)
     camel = camel_case(name)
@@ -264,12 +270,28 @@ def build_plan(name, label, add_header, template_header, root=fs.ROOT):
         plan.edit(paths.map_headers_txt, f"{new_header} before MAP_HEADER_COUNT",
                   headers_txt)
 
-        block = header_block(new_header, template_header, name, paths.map_headers_h)
+        matrix_id = None
+        if own_matrix:
+            # Copies the template's blocks into new land data under a matrix of its own.
+            workspace = map_matrices.Workspace(paths.root)
+            try:
+                matrix_id = map_matrices.matrix_from_template(workspace, template_header)
+            except map_matrices.MatrixError as error:
+                raise NewMapError("; ".join(error.errors))
+            for edit in workspace.edits.values():
+                target = os.path.join(paths.root, edit.path)
+                if edit.created:
+                    plan.create(target, edit.content)
+                else:
+                    plan.edit(target, edit.description, edit.content)
+
+        block = header_block(new_header, template_header, name, paths.map_headers_h, matrix_id)
         if block is None:
             raise NewMapError(f"no template header {template_header}")
         headers_h = read(paths.map_headers_h)
         close = headers_h.rindex("};")
-        plan.edit(paths.map_headers_h, f"{new_header}, geometry from {template_header}",
+        where = f"own matrix {matrix_id} copied from" if matrix_id else "geometry from"
+        plan.edit(paths.map_headers_h, f"{new_header}, {where} {template_header}",
                   headers_h[:close] + block + headers_h[close:])
 
     return plan
@@ -285,6 +307,9 @@ def main():
                         help="also add the map header entry")
     parser.add_argument("--like", default=DEFAULT_TEMPLATE,
                         help=f"header to copy geometry from (default {DEFAULT_TEMPLATE})")
+    parser.add_argument("--own-matrix", action="store_true",
+                        help="with --header: give the map its own matrix, copying the "
+                             "template's blocks into new land data files")
     parser.add_argument("--dry-run", action="store_true",
                         help="show what would change and stop")
     args = parser.parse_args()
@@ -295,7 +320,7 @@ def main():
 
     try:
         plan = build_plan(args.name, args.label or args.name.replace("_", " "),
-                          args.header, args.like)
+                          args.header, args.like, own_matrix=args.own_matrix)
     except NewMapError as error:
         raise SystemExit(f"error: {error}")
 

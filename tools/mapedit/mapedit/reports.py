@@ -141,6 +141,7 @@ class NewMapScreen(ChangeDialog):
             yield Input(placeholder='Name, lower snake_case, e.g. route_231', id='name')
             yield Input(placeholder='Label for the placeholder message (blank: the name)', id='label')
             yield Checkbox('Also add the map header, copying geometry from the template', id='header')
+            yield Checkbox("Give it its own matrix (copies the template's blocks into new land data)", id='own-matrix')
             yield Input(value=new_map.DEFAULT_TEMPLATE, placeholder='Template header', id='template')
             with Horizontal():
                 yield Button('Preview', id='preview')
@@ -170,7 +171,8 @@ class NewMapScreen(ChangeDialog):
             try:
                 self.plan = new_map.build_plan(name, self.value('label') or name.replace('_', ' '),
                                                self.query_one('#header', Checkbox).value,
-                                               self.value('template'), root=self.root)
+                                               self.value('template'), root=self.root,
+                                               own_matrix=self.query_one('#own-matrix', Checkbox).value)
             except new_map.NewMapError as error:
                 self.plan = None
                 preview.update(f'error: {error}')

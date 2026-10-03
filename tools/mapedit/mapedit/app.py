@@ -121,17 +121,27 @@ class BlockGrid(Widget):
 
 
 class BrowserScreen(Screen):
-    # Ctrl keys, because the search box has focus and takes plain letters. Ctrl+K is Input's.
+    # Plain letters, not Ctrl keys: IDE terminals keep Ctrl+N/F/O/T for themselves. The search box
+    # takes letters while it has focus, so these act once the list has focus (Down, Tab or Enter).
     BINDINGS = [
         Binding('escape', 'app.quit', 'Quit'),
-        Binding('ctrl+n', 'new_map', 'New map'),
-        Binding('ctrl+t', 'warps', 'Check warps'),
-        Binding('ctrl+f', 'free_state', 'Free flags'),
+        Binding('down', 'focus_list', 'List', show=False),
+        Binding('slash', 'focus_search', 'Search'),
+        Binding('n', 'new_map', 'New map'),
+        Binding('w', 'warps', 'Check warps'),
+        Binding('f', 'free_state', 'Free flags'),
+        Binding('x', 'matrix', 'Matrix'),
     ]
+
+    # The list scrolls inside itself; letting it grow would scroll the search box off screen.
+    DEFAULT_CSS = """
+    BrowserScreen #maps { height: 1fr; }
+    """
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Input(placeholder='Search map headers, e.g. "twinleaf town"', id='search')
+        yield Input(placeholder='Search map headers, e.g. "twinleaf town"; Down or Tab for the list and its keys',
+                    id='search')
         yield OptionList(id='maps')
         yield Footer()
 
@@ -148,6 +158,12 @@ class BrowserScreen(Screen):
 
     def on_input_changed(self, event: Input.Changed):
         self.show(self.app.repository.search(event.value))
+
+    def action_focus_list(self):
+        self.query_one('#maps', OptionList).focus()
+
+    def action_focus_search(self):
+        self.query_one('#search', Input).focus()
 
     def on_input_submitted(self, event: Input.Submitted):
         options = self.query_one('#maps', OptionList)
@@ -170,6 +186,13 @@ class BrowserScreen(Screen):
         from .reports import WarpsScreen
         self.app.push_screen(WarpsScreen())
 
+    def action_matrix(self):
+        options = self.query_one('#maps', OptionList)
+        if options.highlighted is None:
+            return
+        header = options.get_option_at_index(options.highlighted).id
+        self.app.open_matrix(header)
+
     def action_free_state(self):
         from .reports import FreeStateScreen
         self.app.push_screen(FreeStateScreen())
@@ -187,6 +210,7 @@ class MapScreen(Screen):
         Binding('i', 'info', 'Map info'),
         Binding('w', 'warps', 'Warps'),
         Binding('f', 'free_state', 'Free flags'),
+        Binding('x', 'matrix', 'Matrix'),
     ]
 
     DEFAULT_CSS = """
@@ -302,6 +326,24 @@ class MapScreen(Screen):
         from .reports import FreeStateScreen
         self.app.push_screen(FreeStateScreen())
 
+    def action_matrix(self):
+        block = self.grid.block
+        self.app.open_matrix(self.view.header, self.after_matrix,
+                             cursor=(block.base_z // maps.BLOCK_TILES, block.base_x // maps.BLOCK_TILES))
+
+    def after_matrix(self, changed: bool | None):
+        if not changed:
+            return
+        self.view = self.app.repository.load(self.view.header)
+        if not self.view.blocks:
+            self.app.pop_screen()
+            self.app.notify(self.app.no_blocks_reason(self.view.header), severity='warning', timeout=10)
+            return
+        self.block_index = min(self.block_index, len(self.view.blocks) - 1)
+        self.grid.view = self.view
+        self.grid.load_block(self.view.blocks[self.block_index])
+        self.refresh_block()
+
     def confirm(self, make_change):
         try:
             change = make_change()
@@ -366,7 +408,12 @@ class ConfirmScreen(ChangeDialog):
 
 
 def describe_change(change) -> str:
-    lines = [change.summary, f'  in {change.path.name}']
+    """A change's summary, the files it touches, and its warnings."""
+    lines = [change.summary]
+    if hasattr(change, 'lines'):
+        lines += change.lines()
+    else:
+        lines.append(f'  in {change.path.name}')
     lines += [f'  warning: {warning}' for warning in change.warnings]
     return '\n'.join(lines)
 
@@ -459,6 +506,14 @@ class MapEditApp(App):
             return (f'{header} has no blocks: {matrix_id} names a header in every cell, and none is {header}. '
                     f'Give it its own matrix, or name it in the cells it should own.')
         return f'{header} has no land data blocks in {matrix_id}'
+
+    def open_matrix(self, header: str, callback=None, cursor=(0, 0)):
+        from .matrix import MatrixScreen
+        matrix_id = self.repository.context.header(header).get('mapMatrixID')
+        if matrix_id is None:
+            self.notify(f'{header} has no matrix', severity='warning')
+            return
+        self.push_screen(MatrixScreen(matrix_id, cursor), callback)
 
     def reload_repository(self):
         """Re-read headers and matrices after something (a new map) changed them."""

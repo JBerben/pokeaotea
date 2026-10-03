@@ -51,6 +51,15 @@ of the template's layout - and you swap `.mapMatrixID` and
 `.areaDataArchiveID` when you have your own geometry. Without `--header` the
 resources are wired but nothing points at them yet.
 
+A header copied from an overworld map shares that map's matrix, where every
+cell names its own header, so the copy owns no blocks and the game never enters
+it. `--own-matrix` (with `--header`) fixes that: it copies the blocks the
+template owns into new land data files, puts them in a new single-header matrix,
+and points the header at it. The result is a map of its own - entered by warp,
+not by walking off the overworld - whose blocks you can edit without touching
+the template. To join the seamless overworld instead, assign overworld cells to
+the header with [`map_matrices.py`](../maps/matrices.md).
+
 Always `--dry-run` first. Afterwards, `make rom`, then `map_info.py <name>` to
 confirm the whole chain resolved.
 

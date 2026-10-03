@@ -25,6 +25,12 @@ FILES = [
     'generated/text_banks.txt',
     'generated/map_headers.txt',
     'include/data/map_headers.h',
+    'generated/maps.txt',
+    'res/field/maps/data/meson.build',
+    'res/field/maps/data/map_data.order',
+    # Blocks of the templates the --own-matrix tests copy: the default house and Twinleaf Town.
+    'res/field/maps/data/map_data_180.bin',
+    'res/field/maps/data/map_data_000.bin',
 ]
 
 
@@ -36,6 +42,7 @@ class NewMapTestCase(unittest.TestCase):
             (self.root / relative).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / relative, self.root / relative)
         shutil.copytree(REPO / 'res/text', self.root / 'res/text')
+        shutil.copytree(REPO / 'res/field/matrices', self.root / 'res/field/matrices')
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -88,6 +95,42 @@ class BuildPlanTest(NewMapTestCase):
             new_map.build_plan('My Town', 'x', False, new_map.DEFAULT_TEMPLATE, root=self.root)
 
         self.assertEqual(str(raised.exception), 'name must be lower snake_case')
+
+
+class OwnMatrixTest(NewMapTestCase):
+    def test_gives_the_header_a_matrix_with_copies_of_the_templates_blocks(self):
+        plan = new_map.build_plan('my_new_town', 'x', True, new_map.DEFAULT_TEMPLATE, root=self.root, own_matrix=True)
+
+        self.assertIn('  create  res/field/matrices/map_matrix_289.json', plan.lines())
+        self.assertIn('  create  res/field/maps/data/map_data_666.bin', plan.lines())
+        plan.apply()
+
+        headers = self.read('include/data/map_headers.h')
+        block = headers[headers.index('[MAP_HEADER_MY_NEW_TOWN]'):]
+        self.assertIn('.mapMatrixID = map_matrix_289,', block[:block.index('}')])
+        self.assertEqual((self.root / 'res/field/maps/data/map_data_666.bin').read_bytes(),
+                         (REPO / 'res/field/maps/data/map_data_180.bin').read_bytes())
+
+    def test_an_overworld_template_becomes_a_map_of_its_own(self):
+        new_map.build_plan('my_new_town', 'x', True, 'MAP_HEADER_TWINLEAF_TOWN', root=self.root, own_matrix=True).apply()
+
+        sys.path.insert(0, str(HERE))
+        import map_props
+        blocks = map_props.MapContext(self.root).blocks('MAP_HEADER_MY_NEW_TOWN')
+        self.assertEqual([block.land_data for block in blocks], ['666'])
+
+    def test_own_matrix_needs_a_header(self):
+        with self.assertRaises(new_map.NewMapError) as raised:
+            new_map.build_plan('my_new_town', 'x', False, new_map.DEFAULT_TEMPLATE, root=self.root, own_matrix=True)
+
+        self.assertEqual(str(raised.exception), '--own-matrix needs --header: the matrix belongs to the new header')
+
+    def test_command_line_flag(self):
+        result = subprocess.run([sys.executable, str(HERE / 'new_map.py'), 'my_new_town', '--header', '--own-matrix', '--dry-run'],
+                                capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('res/field/matrices/map_matrix_289.json', result.stdout)
 
 
 class CommandLineTest(NewMapTestCase):

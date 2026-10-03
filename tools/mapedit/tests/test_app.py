@@ -52,6 +52,40 @@ class BrowserTest(AppTestCase):
             self.assertIsInstance(self.app.screen, MapScreen)
             self.assertEqual(self.app.screen.view.header, 'MAP_HEADER_TWINLEAF_TOWN_RIVAL_HOUSE_1F')
 
+    async def test_letters_typed_in_the_search_box_search(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            await pilot.click('#search')
+            await pilot.press(*'new')
+            await pilot.pause()
+
+            self.assertIsInstance(self.app.screen, BrowserScreen)
+            self.assertEqual(self.app.screen.query_one('#search', Input).value, 'new')
+
+    async def test_down_moves_to_the_list_and_slash_back_to_search(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            await pilot.press('down')
+            await pilot.pause()
+            self.assertEqual(self.app.focused.id, 'maps')
+
+            await pilot.press('slash')
+            await pilot.pause()
+            self.assertEqual(self.app.focused.id, 'search')
+
+    async def test_search_box_stays_on_screen_while_browsing_the_list(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            await pilot.press('down', *['down'] * 60)
+            await pilot.pause()
+
+            self.assertTrue(self.app.screen.query_one('#search', Input).region.y < SIZE[1])
+            await pilot.click('#search')
+
+    async def test_browser_actions_are_listed_in_the_footer_without_ctrl(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            keys = {binding.key for binding in BrowserScreen.BINDINGS}
+
+            self.assertTrue({'n', 'w', 'f', 'x'} <= keys)
+            self.assertFalse([key for key in keys if key.startswith('ctrl+')])
+
     async def test_escape_returns_to_the_browser(self):
         async with self.app.run_test(size=SIZE) as pilot:
             await self.open_twinleaf(pilot)

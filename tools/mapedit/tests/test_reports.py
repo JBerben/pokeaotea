@@ -61,7 +61,7 @@ class WarpsTest(MapEditTestCase):
 
     async def test_one_way_toggle_rechecks(self):
         async with self.app.run_test(size=SIZE) as pilot:
-            await pilot.press('ctrl+t')
+            await pilot.press('down', 'w')
             await pilot.pause()
             before = text_of(self.app.screen)
 
@@ -73,7 +73,7 @@ class WarpsTest(MapEditTestCase):
 
     async def test_browser_checks_every_map(self):
         async with self.app.run_test(size=SIZE) as pilot:
-            await pilot.press('ctrl+t')
+            await pilot.press('down', 'w')
             await pilot.pause()
 
             self.assertIsInstance(self.app.screen, WarpsScreen)
@@ -82,7 +82,7 @@ class WarpsTest(MapEditTestCase):
 
 class FreeStateTest(MapEditTestCase):
     async def open_free_state(self, pilot):
-        await pilot.press('ctrl+f')
+        await pilot.press('down', 'f')
         await pilot.pause()
         self.assertIsInstance(self.app.screen, FreeStateScreen)
         await self.app.workers.wait_for_complete()
@@ -123,7 +123,7 @@ class NewMapTest(MapEditTestCase):
     LAND_DATA = ('000', '180')
 
     async def open_form(self, pilot):
-        await pilot.press('ctrl+n')
+        await pilot.press('down', 'n')
         await pilot.pause()
         self.assertIsInstance(self.app.screen, NewMapScreen)
 
@@ -174,6 +174,24 @@ class NewMapTest(MapEditTestCase):
             self.assertIsInstance(self.app.screen, BrowserScreen)
             messages = [notification.message for notification in self.app._notifications]
             self.assertTrue(any('map_matrix_000 names a header in every cell' in m for m in messages), messages)
+
+    async def test_own_matrix_turns_an_overworld_template_into_a_map_that_opens(self):
+        async with self.app.run_test(size=SIZE) as pilot:
+            await self.open_form(pilot)
+            self.app.screen.query_one('#name', Input).value = 'my_new_town'
+            self.app.screen.query_one('#header', Checkbox).value = True
+            self.app.screen.query_one('#own-matrix', Checkbox).value = True
+            self.app.screen.query_one('#template', Input).value = 'MAP_HEADER_TWINLEAF_TOWN'
+            await pilot.click('#preview')
+            await pilot.pause()
+            self.assertIn('res/field/matrices/map_matrix_289.json', text_of(self.app.screen, '#preview-text'))
+            await pilot.click('#apply')
+            await pilot.pause()
+
+            await self.open_map(pilot, 'my new town')
+
+            self.assertIsInstance(self.app.screen, MapScreen)
+            self.assertEqual([block.land_data for block in self.app.screen.view.blocks], ['666'])
 
     async def test_errors_are_shown_and_nothing_is_written(self):
         async with self.app.run_test(size=SIZE) as pilot:

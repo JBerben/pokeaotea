@@ -12,6 +12,11 @@ REPO = maps.REPO
 FILES = [
     'include/data/map_headers.h',
     'include/constants/field/map_tile_behaviors.h',
+    # Matrix editing: header and land data names, and the land data registry.
+    'generated/map_headers.txt',
+    'generated/maps.txt',
+    'res/field/maps/data/meson.build',
+    'res/field/maps/data/map_data.order',
 ]
 TREES = [
     'res/field/matrices',
@@ -35,7 +40,6 @@ MAP_SOURCES = [
     'res/field/scripts/meson.build',
     'res/field/scripts/scripts.order',
     'generated/text_banks.txt',
-    'generated/map_headers.txt',
 ]
 
 
