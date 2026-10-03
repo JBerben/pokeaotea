@@ -44,7 +44,9 @@ def tile_behavior_names():
     """Enum order in the header is the value, so index the entries."""
     path = os.path.join(ROOT, "include/constants/field/map_tile_behaviors.h")
     names, started = [], False
-    for line in open(path, encoding="utf-8"):
+    with open(path, encoding="utf-8") as handle:
+        lines = handle.readlines()
+    for line in lines:
         stripped = line.strip()
         if stripped.startswith("enum TileBehavior"):
             started = True
@@ -108,6 +110,33 @@ def read_tile(attributes, base_x, base_z, tile_x, tile_z):
     return (value >> COLLISION_SHIFT) & 1, value & BEHAVIOR_MASK
 
 
+TILE_WALKABLE = "walkable"
+TILE_BLOCKED = "blocked"
+TILE_WATER = "water"
+TILE_DOOR = "door"
+TILE_SPECIAL = "special"
+
+TILE_SYMBOLS = {
+    TILE_WALKABLE: ".",
+    TILE_BLOCKED: "#",
+    TILE_WATER: "~",
+    TILE_DOOR: "D",
+    TILE_SPECIAL: "+",
+}
+
+
+def classify_tile(collision, behavior, names):
+    """Coarse kind of a tile, as drawn on the --map grid."""
+    name = names[behavior] if behavior < len(names) else ""
+    if collision:
+        return TILE_DOOR if "DOOR" in name else TILE_BLOCKED
+    if "WATER" in name:
+        return TILE_WATER
+    if behavior == 0:
+        return TILE_WALKABLE
+    return TILE_SPECIAL
+
+
 def describe(collision, behavior, names):
     name = names[behavior] if behavior < len(names) else f"behavior {behavior}"
     if collision:
@@ -166,16 +195,7 @@ def main():
                 if x == args.x and z == args.z:
                     cells += "X"
                     continue
-                c, b = tile
-                tile_name = names[b] if b < len(names) else ""
-                if c:
-                    cells += "D" if "DOOR" in tile_name else "#"
-                elif "WATER" in tile_name:
-                    cells += "~"
-                elif b == 0:
-                    cells += "."
-                else:
-                    cells += "+"
+                cells += TILE_SYMBOLS[classify_tile(*tile, names)]
             print(f"  z {z:5d} {cells}")
 
     return 0 if not collision and behavior == 0 else 1

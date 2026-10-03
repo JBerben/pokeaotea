@@ -1,0 +1,18 @@
+# ABOUTME: uv project for mapedit, the terminal UI over the repo's map-editing scripts in tools/scripts.
+# ABOUTME: Run with `uv run --project tools/mapedit mapedit` from the repo root.
+
+[project]
+name = "mapedit"
+version = "0.1.0"
+description = "Terminal UI for browsing maps and placing map props"
+requires-python = ">=3.12"
+dependencies = [
+    "textual>=8.2.8",
+]
+
+[project.scripts]
+mapedit = "mapedit.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

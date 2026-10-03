@@ -393,6 +393,24 @@ test('Map Props - Placement Tests',
     workdir: meson.project_source_root()
 )
 
+test('Field Tools - Tile Classification Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_check_tile'],
+    workdir: meson.project_source_root()
+)
+
+# mapedit is a uv project with its own dependencies (Textual), so its tests need uv.
+uv_exe = find_program('uv', native: true, required: false)
+if uv_exe.found()
+    test('mapedit - TUI Tests',
+        uv_exe,
+        args: ['run', '--project', 'tools/mapedit', 'python', '-m', 'unittest', 'discover',
+               '-s', 'tools/mapedit/tests', '-t', 'tools/mapedit'],
+        workdir: meson.project_source_root(),
+        timeout: 300,
+    )
+endif
+
 
 ############################################################
 ###                       POSTCONF                       ###

@@ -59,6 +59,8 @@ The draw list needs no edit. Placing the prop on a map is the next step.
 
 ## Placing props on a map
 
+The same operations are available interactively in [mapedit](../mapedit.md).
+
 `tools/scripts/map_props.py` edits the `mapProps` section of a map's land data:
 
 ```bash

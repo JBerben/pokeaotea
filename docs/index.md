@@ -34,6 +34,7 @@ For more detailed information about the project as a whole, please refer to its
   - [Editing Map Headers](maps/editing_map_headers.md)
   - [Texture Animations](maps/texture_animations.md)
   - [Map Props](maps/props.md)
+- [mapedit (map editing TUI)](mapedit.md)
 - [Field Scripts](scripting/README.md)
   - [Common Patterns](scripting/patterns.md)
   - [Tooling](scripting/tooling.md)
