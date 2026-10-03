@@ -314,14 +314,16 @@ Here's the structure of each file:
 ## Map prop animations list (`bm_anime_list.narc`)
 
 This NARC contains 590 files. Each file corresponds to the map prop model with
-the same index in the `build_model.narc` NARC.
+the same index in the `build_model.narc` NARC. In this repository it is built from
+`res/field/props/animations/prop_animation_lists.json`; see [props.md](props.md).
 
 | Name              | Offset   | Size   | Type    | Description                                                                                    |
 | ----------------- | -------- | ------ | ------- | ---------------------------------------------------------------------------------------------- |
 | `hasAnimations`   | `0x0000` | 1      | `bool`  | Whether the map prop model has animations.                                                     |
 | `flags`           | `0x0001` | 1      | `u8`    | Some flags about the animations.                                                               |
 | `isBicycleSlope`  | `0x0002` | 1      | `bool`  | Whether the map prop model is a slope for the bicycle.                                         |
-| `animeArchiveIDs` | `0x0003` | 4 \* 4 | `u32[]` | Array of indexes in the `bm_anime.narc` NARC. Each map prop model supports up to 4 animations. |
+| `dummy`           | `0x0003` | 1      | `u8`    | Unused; always 0.                                                                              |
+| `animeArchiveIDs` | `0x0004` | 4 \* 4 | `s32[]` | Array of indexes in the `bm_anime.narc` NARC. Each map prop model supports up to 4 animations; unused slots are -1, and the loader stops at the first -1. |
 
 Here's the description of each bit in the `flags` field:
 
@@ -346,6 +348,10 @@ Here's the description of each bit in the `flags` field:
 
 This file is _not_ a NARC file, but a binary file containing the material and
 shape (mesh) IDs for each map prop model.
+
+In this repository it is derived from the map prop models (their render commands,
+sorted by material ID; empty for animated models) plus
+`res/field/props/models/draw_order_overrides.json`; see [props.md](props.md).
 
 | Name               | Offset   | Size                    | Type                                    | Description                                         | Value                             |
 | ------------------ | -------- | ----------------------- | --------------------------------------- | --------------------------------------------------- | --------------------------------- |

@@ -1,4 +1,4 @@
-map_prop_model_files = copy_gen.process(files(
+map_prop_model_srcs = files(
     'prop_model_000.nsbmd',
     'prop_model_001.nsbmd',
     'prop_model_002.nsbmd',
@@ -589,7 +589,9 @@ map_prop_model_files = copy_gen.process(files(
     'prop_model_587.nsbmd',
     'prop_model_588.nsbmd',
     'prop_model_589.nsbmd',
-))
+)
+
+map_prop_model_files = copy_gen.process(map_prop_model_srcs)
 
 map_prop_model_narc = custom_target('prop_models.narc',
     output: [

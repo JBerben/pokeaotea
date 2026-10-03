@@ -1,0 +1,22 @@
+{
+    "prop_model_022_nsbmd": [
+        {"material": "h_kage", "shape": "polygon2"},
+        {"material": "light", "shape": "polygon1"},
+        {"material": "t1_h01", "shape": "polygon0"},
+        {"material": "door1", "shape": "polygon3"}
+    ],
+    "prop_model_023_nsbmd": [
+        {"material": "h_kage", "shape": "polygon3"},
+        {"material": "light", "shape": "polygon2"},
+        {"material": "t1_s01_1", "shape": "polygon0"},
+        {"material": "t1_s01_2", "shape": "polygon1"},
+        {"material": "door", "shape": "polygon4"}
+    ],
+    "prop_model_236_nsbmd": [
+        {"material": "h_kage", "shape": "polygon3"},
+        {"material": "light", "shape": "polygon2"},
+        {"material": "t1_s01_1", "shape": "polygon0"},
+        {"material": "t1_s01_2", "shape": "polygon1"},
+        {"material": "door1", "shape": "polygon4"}
+    ]
+}

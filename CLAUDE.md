@@ -132,6 +132,10 @@ data. Read `docs/maps/README.md` first; `src/overlay005/` holds the runtime side
 Animated ground tiles (sea, flowers, lamps) are matched to map texture sets by texture name and
 built from `res/field/texture_animations/`; see `docs/maps/texture_animations.md`.
 
+Map props (`res/field/props/`) take their textures from the area's prop texture set, not the model.
+Per-model animation lists are JSON and draw lists are derived from the models by
+`tools/scripts/make_prop_tables.py`; see `docs/maps/props.md`.
+
 ### Logging
 
 With `make debug`, `#include "debug.h"` and call `EmulatorLog(fmt, ...)` (printf-style, prefixed

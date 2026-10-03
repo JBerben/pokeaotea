@@ -367,6 +367,14 @@ test('Texture Animations - Packer Tests',
     workdir: meson.project_source_root()
 )
 
+test('Map Prop Tables - Builder Tests',
+    python_exe,
+    args: ['-m', 'unittest', 'tools.scripts.test_make_prop_tables'],
+    env: {'NITROARC': nitroarc_exe.full_path()},
+    depends: nitroarc_exe,
+    workdir: meson.project_source_root()
+)
+
 
 ############################################################
 ###                       POSTCONF                       ###

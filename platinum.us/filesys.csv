@@ -261,7 +261,7 @@ res/prebuilt/fielddata/encountdata/d_enc_data.narc,/fielddata/encountdata/d_enc_
 res/prebuilt/fielddata/encountdata/p_enc_data.narc,/fielddata/encountdata/p_enc_data.narc
 res/field/encounters/pl_enc_data.narc,/fielddata/encountdata/pl_enc_data.narc
 res/field/props/models/prop_models.narc,/fielddata/build_model/build_model.narc
-res/prebuilt/fielddata/build_model/build_model_matshp.dat,/fielddata/build_model/build_model_matshp.dat
+res/field/props/prop_material_shapes.bin,/fielddata/build_model/build_model_matshp.dat
 res/field/matrices/map_matrix.narc,/fielddata/mapmatrix/map_matrix.narc
 res/field/area_data/area_data.narc,/fielddata/areadata/area_data.narc
 res/field/props/model_sets/prop_model_sets.narc,/fielddata/areadata/area_build_model/area_build.narc
@@ -285,7 +285,7 @@ res/prebuilt/battle/tr_ai/tr_ai_seq.narc,/battle/tr_ai/tr_ai_seq.narc
 res/graphics/map_popups/map_popup.narc,/arc/area_win_gra.narc
 res/prebuilt/arc/balance_ball_gra.narc,/arc/balance_ball_gra.narc
 res/field/props/animations/prop_animations.narc,/arc/bm_anime.narc
-res/prebuilt/arc/bm_anime_list.narc,/arc/bm_anime_list.narc
+res/field/props/prop_animation_lists.narc,/arc/bm_anime_list.narc
 res/prebuilt/arc/codein_gra.narc,/arc/codein_gra.narc
 res/prebuilt/arc/demo_tengan_gra.narc,/arc/demo_tengan_gra.narc
 res/prebuilt/arc/email_gra.narc,/arc/email_gra.narc

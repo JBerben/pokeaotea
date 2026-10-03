@@ -260,7 +260,7 @@ bda5c8e66cfa121c2d518d4388bd6f742746cda0 *res/prebuilt/fielddata/encountdata/d_e
 4bcbf53d522ed962160b85af588816f7257fb1c3 *res/prebuilt/fielddata/encountdata/p_enc_data.narc
 d9bf534c175c3c991e77fff985c099723499e1eb *res/field/encounters/pl_enc_data.narc
 7eca91aaa5f7ef816f51a884e2f42a26f51f8bbd *res/field/props/models/prop_models.narc
-f49c6992b8caf5fea13831789fe4bfb026beb967 *res/prebuilt/fielddata/build_model/build_model_matshp.dat
+f49c6992b8caf5fea13831789fe4bfb026beb967 *res/field/props/prop_material_shapes.bin
 992f33f6450613066830606d28e94b91031caddb *res/field/matrices/map_matrix.narc
 ef6d2ff28be455119bd3c9c52c38e45b38909549 *res/field/area_data/area_data.narc
 a2cd6f636960544440b489e827e5e16dcaa7f014 *res/field/props/model_sets/prop_model_sets.narc
@@ -284,7 +284,7 @@ e8c96b0f5b6d59820e7201f7881183e3aff1b35f *res/prebuilt/battle/tr_ai/tr_ai_seq.na
 b54b704c20f35cb66eb2790086dc47cd9ac612f7 *res/graphics/map_popups/map_popup.narc
 7d5eac7006f041f4da9f9baf04ee61cc187f4580 *res/prebuilt/arc/balance_ball_gra.narc
 99295a6e74067238dbbc23105cad1679687c6d86 *res/field/props/animations/prop_animations.narc
-afd2be309c09733b33ec9b73b793518b41153828 *res/prebuilt/arc/bm_anime_list.narc
+afd2be309c09733b33ec9b73b793518b41153828 *res/field/props/prop_animation_lists.narc
 6a403c707b8737e4f19644ffe51606838fe43456 *res/prebuilt/arc/codein_gra.narc
 f1ef036922af5a593650d6a52f56fb3ec59d3d83 *res/prebuilt/arc/demo_tengan_gra.narc
 adcb9634923530fd7f217a131a3949f556f4f324 *res/prebuilt/arc/email_gra.narc

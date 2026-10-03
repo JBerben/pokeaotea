@@ -1,6 +1,5 @@
 prebuilt_files = [
     'balance_ball_gra.narc',
-    'bm_anime_list.narc',
     'codein_gra.narc',
     'demo_tengan_gra.narc',
     'email_gra.narc',

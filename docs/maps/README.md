@@ -50,6 +50,8 @@ in which the player moves.
   features system used to make dynamic maps
 - [texture_animations.md](texture_animations.md): how animated ground tiles (sea,
   flowers, lamps) are matched to map texture sets, and how to add new ones
+- [props.md](props.md): where map prop models, textures, animations and their
+  per-model tables live, and what must line up for a prop to render
 
 ## Credits
 
