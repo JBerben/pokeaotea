@@ -43,8 +43,16 @@ MAP_SOURCES = [
 ]
 
 
+# What the renderer reads, on top of the above: models, animations, and the area's map textures.
+RENDER_TREES = [
+    'res/field/props/models',
+    'res/field/props/animations',
+    'res/field/texture_animations',
+]
+
+
 class Sandbox:
-    def __init__(self, land_data=('000',), texture_sets=('000',), map_sources=False):
+    def __init__(self, land_data=('000',), texture_sets=('000',), map_sources=False, render=False):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
         for relative in FILES + PROP_SOURCES:
@@ -55,6 +63,13 @@ class Sandbox:
             self.copy(f'res/field/maps/data/map_data_{name}.bin')
         for name in texture_sets:
             self.copy(f'res/field/props/texture_sets/prop_texture_set_{name}.nsbtx')
+        if render:
+            for relative in RENDER_TREES:
+                shutil.copytree(REPO / relative, self.root / relative, dirs_exist_ok=True)
+            # Twinleaf Town's map textures, and Route 210 North's (waterfalls) map and prop textures.
+            for name in ('map_texture_set_074', 'map_texture_set_010'):
+                self.copy(f'res/field/maps/texture_sets/{name}.nsbtx')
+            self.copy('res/field/props/texture_sets/prop_texture_set_006.nsbtx')
         if map_sources:
             for relative in MAP_SOURCES:
                 self.copy(relative)

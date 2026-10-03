@@ -2,6 +2,7 @@
 # ABOUTME: Every write is a map_props Change shown for confirmation first; the app never edits repo files itself.
 
 import argparse
+import time
 from pathlib import Path
 
 from rich.text import Text
@@ -17,6 +18,12 @@ from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Opt
 from textual.widgets.option_list import Option
 
 from . import maps
+from .image_view import MODES, ImageView
+
+# Preview: the largest render (pixels on the longest side), and how often playback redraws.
+PREVIEW_MIN_PIXELS = 128
+PREVIEW_MAX_PIXELS = 768
+PREVIEW_FPS = 15
 
 MARKER_PRIORITY = ['prop', 'warp', 'npc', 'sign', 'trigger']
 MARKER_SYMBOLS = {'prop': 'P', 'warp': 'W', 'npc': 'N', 'sign': 'S', 'trigger': 'T'}
@@ -211,9 +218,13 @@ class MapScreen(Screen):
         Binding('w', 'warps', 'Warps'),
         Binding('f', 'free_state', 'Free flags'),
         Binding('x', 'matrix', 'Matrix'),
+        Binding('p', 'preview', 'Preview'),
+        Binding('v', 'preview_view', 'Top/angled'),
+        Binding('t', 'animate', 'Animate'),
     ]
 
     DEFAULT_CSS = """
+    #render-preview { height: 2fr; display: none; }
     #side { width: 1fr; padding: 0 1; }
     #tile-info { height: auto; margin-bottom: 1; }
     #props { height: 1fr; }
@@ -224,6 +235,12 @@ class MapScreen(Screen):
         super().__init__()
         self.view = view
         self.block_index = 0
+        self.preview_view = 'top'
+        self.animate = False
+        self.playing = False
+        self.play_start = 0.0
+        self.play_timer = None
+        self.baked = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -232,6 +249,7 @@ class MapScreen(Screen):
             with Vertical(id='side'):
                 yield Static(id='block-info')
                 yield Static(id='tile-info')
+                yield ImageView(self.app.graphics, id='render-preview')
                 yield DataTable(id='props', cursor_type='row', zebra_stripes=True)
         yield Static(LEGEND, id='legend')
         yield Footer()
@@ -274,6 +292,7 @@ class MapScreen(Screen):
         for marker in grid.markers.get((x, z), []):
             lines.append(f'  {marker.kind}: {marker.label}')
         self.query_one('#tile-info', Static).update('\n'.join(lines))
+        self.update_preview_highlight()
 
     def action_block(self, step: int):
         if len(self.view.blocks) < 2:
@@ -281,6 +300,7 @@ class MapScreen(Screen):
         self.block_index = (self.block_index + step) % len(self.view.blocks)
         self.grid.load_block(self.view.blocks[self.block_index])
         self.refresh_block()
+        self.request_render()
 
     def action_back(self):
         self.app.pop_screen()
@@ -355,6 +375,93 @@ class MapScreen(Screen):
     def after_change(self, applied: bool | None):
         if applied:
             self.refresh_block()
+            self.request_render()
+
+    # Render preview: the current block drawn by mapedit.render, in a worker so the UI stays responsive.
+
+    @property
+    def preview(self) -> ImageView:
+        return self.query_one('#render-preview', ImageView)
+
+    def action_preview(self):
+        self.preview.display = not self.preview.display
+        if self.preview.display:
+            # Bake once layout has given the pane its size, which decides the render resolution.
+            self.call_after_refresh(self.request_render)
+        else:
+            self.stop_playing()
+
+    def action_preview_view(self):
+        self.preview_view = 'angled' if self.preview_view == 'top' else 'top'
+        self.request_render()
+
+    def action_animate(self):
+        if self.playing:
+            self.animate = False
+            self.stop_playing()
+            return
+        self.animate = True
+        if self.baked is not None:
+            self.start_playing()
+
+    def request_render(self):
+        """Bakes the block in a worker; frames for playback are then cheap re-texturings of that bake."""
+        if not self.preview.display:
+            return
+        from .render import map_render
+        repository, header, block = self.app.repository, self.view.header, self.grid.block.land_data
+        view = self.preview_view
+        size = min(max(max(self.preview.pixel_size()), PREVIEW_MIN_PIXELS), PREVIEW_MAX_PIXELS)
+
+        def work():
+            return map_render.bake_map(repository, header, view=view, size=size, blocks=[block],
+                                       animations=self.app.animations)
+
+        self.run_worker(work, thread=True, exclusive=True, group='preview', name='preview')
+
+    def on_worker_state_changed(self, event):
+        if event.worker.name != 'preview' or not event.worker.is_finished or event.worker.result is None:
+            return
+        self.baked = event.worker.result
+        self.preview.set_image(self.baked.frame(self.current_tick()))
+        self.update_preview_highlight()
+        if self.animate and not self.playing:
+            self.start_playing()
+
+    def current_tick(self) -> int:
+        """Game frames (30 per second) since playback started."""
+        return int((time.monotonic() - self.play_start) * 30) if self.playing else 0
+
+    def start_playing(self):
+        if not self.baked.animated:
+            self.animate = False
+            self.notify('This block has no texture animations (sea, flowers and waterfalls do).', timeout=5)
+            return
+        self.play_start = time.monotonic()
+        self.play_timer = self.set_interval(1 / PREVIEW_FPS, self.play_frame)
+        self.playing = True
+
+    def stop_playing(self):
+        if self.play_timer is not None:
+            self.play_timer.stop()
+            self.play_timer = None
+        self.playing = False
+
+    def play_frame(self):
+        if self.baked is not None and self.preview.display:
+            self.preview.set_image(self.baked.frame(self.current_tick()))
+
+    def update_preview_highlight(self):
+        if not self.is_mounted:
+            return
+        if self.preview.image is None or self.preview_view != 'top':
+            self.preview.set_highlight(None)
+            return
+        block = self.grid.block
+        x, z = self.grid.cursor
+        tile = self.preview.image.shape[1] / maps.BLOCK_TILES
+        left, top = (x - block.base_x) * tile, (z - block.base_z) * tile
+        self.preview.set_highlight((round(left), round(top), round(left + tile) - 1, round(top + tile) - 1))
 
     def after_register(self, applied: bool | None):
         if applied:
@@ -492,9 +599,19 @@ class AddPropScreen(ChangeDialog):
 class MapEditApp(App):
     TITLE = 'mapedit'
 
-    def __init__(self, root: Path = maps.REPO):
+    def __init__(self, root: Path = maps.REPO, graphics: str = 'auto'):
         super().__init__()
         self.repository = maps.MapRepository(root)
+        self.graphics = graphics
+        self._animations = None
+
+    @property
+    def animations(self):
+        """Ground-tile and prop texture animations, decoded once per session."""
+        if self._animations is None:
+            from .render import map_render
+            self._animations = map_render.Animations(self.repository.root)
+        return self._animations
 
     def on_mount(self):
         self.push_screen(BrowserScreen())
@@ -534,8 +651,10 @@ class MapEditApp(App):
 def main():
     parser = argparse.ArgumentParser(description='Terminal UI for browsing maps and placing map props.')
     parser.add_argument('--root', type=Path, default=maps.REPO, help='repository root (default: this checkout)')
+    parser.add_argument('--graphics', choices=MODES, default='auto',
+                        help='how previews draw: sixel or kitty for real pixels, halfblock for any terminal (default: detect)')
     args = parser.parse_args()
-    MapEditApp(args.root).run()
+    MapEditApp(args.root, args.graphics).run()
 
 
 if __name__ == '__main__':

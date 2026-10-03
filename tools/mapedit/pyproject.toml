@@ -10,6 +10,7 @@ dependencies = [
     "numpy>=2.5.3",
     "pillow>=12.3.0",
     "textual>=8.2.8",
+    "textual-image[textual]>=0.14.1",
 ]
 
 [project.scripts]

@@ -81,7 +81,8 @@ class CommandLineTest(unittest.TestCase):
             report = json.loads(result.stdout)
             self.assertEqual(report['output'], str(output))
             self.assertEqual(report['blocks'], ['000'])
-            self.assertEqual(Image.open(output).size, (128, 128))
+            with Image.open(output) as image:
+                self.assertEqual(image.size, (128, 128))
 
     def test_model(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -92,7 +93,8 @@ class CommandLineTest(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)['missing_textures'], [])
-            self.assertEqual(max(Image.open(output).size), 96)
+            with Image.open(output) as image:
+                self.assertEqual(max(image.size), 96)
 
     def test_unknown_map_is_an_error(self):
         result = self.run_cli('map', 'MAP_HEADER_NOWHERE', '-o', '/tmp/never.png', '--json')

@@ -12,6 +12,21 @@ from .. import maps
 from . import map_render, scene
 
 
+def write_gif(frames, path: Path, frame_ms: float):
+    """Frames composited onto a dark background (GIF has no partial transparency)."""
+    images = []
+    for frame in frames:
+        background = Image.new('RGBA', (frame.shape[1], frame.shape[0]), (40, 40, 40, 255))
+        background.alpha_composite(Image.fromarray(frame))
+        images.append(background.convert('RGB'))
+    # GIF delays are in hundredths of a second; round the running time, not each frame, so 30 fps stays
+    # exact on average (frames alternate 30 and 40 ms) instead of running 10% fast.
+    edges = [round(i * frame_ms / 10) * 10 for i in range(len(images) + 1)]
+    durations = [b - a for a, b in zip(edges, edges[1:])]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    images[0].save(path, save_all=True, append_images=images[1:], duration=durations, loop=0, optimize=False)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='mapedit-render', description='Render maps and models to PNG.')
     parser.add_argument('--root', type=Path, default=maps.REPO, help=argparse.SUPPRESS)
@@ -22,6 +37,9 @@ def main(argv: list[str] | None = None) -> int:
     map_parser.add_argument('--block', action='append', help='only this land data block (e.g. 005); repeatable')
     map_parser.add_argument('--no-props', action='store_true')
     map_parser.add_argument('--markers', action='store_true', help='dot events on the top view')
+    map_parser.add_argument('--animate', action='store_true', help='write an animated GIF of the texture animations')
+    map_parser.add_argument('--frames', type=int, default=30, help='with --animate: game frames to render (30 per second)')
+    map_parser.add_argument('--step', type=int, default=1, help='with --animate: game frames between images')
 
     model_parser = commands.add_parser('model', help='render one model')
     model_parser.add_argument('model', type=Path, help='an .nsbmd')
@@ -45,6 +63,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
+        if args.command == 'map' and args.animate:
+            repository = maps.MapRepository(args.root)
+            ticks = list(range(0, args.frames * args.step, args.step))
+            frames = map_render.render_frames(repository, args.header, ticks, view=args.view, size=args.size,
+                                              props=not args.no_props, markers=args.markers, blocks=args.block)
+            write_gif(frames, args.output, 1000 * args.step / 30)
+            report = {'output': str(args.output), 'width': frames[0].shape[1], 'height': frames[0].shape[0],
+                      'frames': len(frames)}
+            print(json.dumps(report) if args.json else f'wrote {args.output} ({len(frames)} frames)')
+            return 0
         if args.command == 'map':
             result = map_render.render_map(maps.MapRepository(args.root), args.header, view=args.view, size=args.size,
                                            props=not args.no_props, markers=args.markers, blocks=args.block)

@@ -12,9 +12,10 @@ from .sandbox import Sandbox
 class MapEditTestCase(unittest.IsolatedAsyncioTestCase):
     LAND_DATA = ('000',)
     MAP_SOURCES = False
+    RENDER = False
 
     def setUp(self):
-        self.sandbox = Sandbox(land_data=self.LAND_DATA, map_sources=self.MAP_SOURCES)
+        self.sandbox = Sandbox(land_data=self.LAND_DATA, map_sources=self.MAP_SOURCES, render=self.RENDER)
         self.app = MapEditApp(self.sandbox.root)
 
     async def asyncSetUp(self):

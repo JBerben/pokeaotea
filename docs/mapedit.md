@@ -62,6 +62,9 @@ The right side describes the tile under the cursor and lists the block's props.
 | `w` | check this map's warps |
 | `f` | free flags and variables |
 | `x` | the map's matrix |
+| `p` | show or hide a rendered preview of the block (the cursor tile is outlined on the top view) |
+| `v` | switch the preview between top-down and angled |
+| `t` | play the block's texture animations live (ground tiles, waterfalls); `t` again stops. Blocks with nothing animated say so |
 
 **Matrix editor.** A grid of the matrix's cells: each shows its land data number,
 coloured by the header that owns it (`--` is no block). The side panel shows the
@@ -93,11 +96,34 @@ uv run --project tools/mapedit mapedit-render model waterfall.nsbmd --area-set 0
   blocks exactly, so each block's 32 tiles span `size / blocks across` pixels;
   `--markers` dots warps (red), NPCs (cyan), signs (yellow) and triggers (green).
   `--view angled` is a perspective view from the south.
+- `--animate` writes an animated GIF of the map's texture animations instead:
+  the field's ground tiles (sea, beaches, flowers, lamps) and the props'
+  self-playing NSBTA/NSBTP animations (waterfalls, signs), at the game's 30 frames a
+  second. `--frames N` sets how many game frames to render and `--step K` renders
+  every K-th one. Door, honey tree and bicycle slope animations only play when
+  triggered in the game, so they stay still.
 - `model` renders one model. By default its own embedded textures fill in for
   anything the given sets lack (handy before a prop is registered);
   `--no-embedded` renders it the way the game would.
 
-Not modelled yet: the DS lighting model, fog, toon shading and texture
+The map view's preview (`p`) uses the same renderer. It rasterises the block once
+and then only re-textures the animated surfaces each frame, so playback runs in
+real time at the game's speed with no loop seams. How it is drawn depends on the
+terminal:
+
+- **Sixel** or the **Kitty graphics protocol** give real pixels, at the pane's
+  full resolution. mapedit asks the terminal what it supports at start-up (via
+  [textual-image](https://github.com/lnqs/textual-image)).
+- Otherwise it uses **half blocks**: two pixels per character cell, which works in
+  any true-colour terminal.
+
+Force a mode with `mapedit --graphics sixel|kitty|halfblock` (default `auto`) if
+detection gets it wrong. Terminals that can show Sixel include Windows Terminal
+(1.22+), WezTerm, foot and VS Code's terminal (with
+`terminal.integrated.enableImages` turned on); Kitty and Ghostty use the Kitty
+protocol.
+
+Not modelled yet: the DS lighting model, fog, toon shading, and joint (NSBCA)
 animations. Geometry and textures are checked against retail data: every
 model's triangle counts and bounds against its header, and every texture against
 `nitrobtx`'s dump.

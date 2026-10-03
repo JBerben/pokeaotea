@@ -23,6 +23,7 @@ class Mesh:
     texture: np.ndarray      # (h, w, 4) RGBA
     alpha: float
     wrap: tuple              # (repeat_s, repeat_t, flip_s, flip_t)
+    animator: object = None  # tick -> (texture, uv transform or None), for meshes with texture animations
 
 
 @dataclass
@@ -49,6 +50,25 @@ class TextureLibrary:
         self.cache = {}
         self.missing = set()
 
+    def ground_rgba(self, name: str, palette_name: str | None, ground, frame: int) -> np.ndarray:
+        """A map texture showing one frame of its ground-tile animation (texels swapped, palette kept)."""
+        key = ('ground', name, palette_name, frame)
+        if key not in self.cache:
+            base = self.textures[name]
+            texels = ground.frames[frame].data
+            palette = self.palettes.get(palette_name)
+            self.cache[key] = textures.decode(textures.nt.Texture(name, base.param, base.extra, texels),
+                                              palette.data if palette else b'')
+        return self.cache[key]
+
+    def override_texels(self, texture):
+        """Swaps in another texture's texels under an existing name, keeping its format and palette."""
+        base = self.textures.get(texture.name)
+        if base is None:
+            return
+        self.textures[texture.name] = textures.nt.Texture(base.name, base.param, base.extra, texture.data)
+        self.cache = {key: value for key, value in self.cache.items() if key[0] != texture.name}
+
     def add(self, data: bytes):
         """Fills gaps from another texture set (earlier sets win)."""
         texture_set = textures.nt.read_texture_set(data)
@@ -70,11 +90,41 @@ class TextureLibrary:
         return self.cache[key]
 
 
-def meshes_from_model(model: nsbmd.Model, library: TextureLibrary, transform: np.ndarray | None = None) -> list[Mesh]:
+def material_state(material, animations, tick):
+    """The texture, palette and texture-matrix track a material shows at a tick."""
+    from . import animation as anim
+
+    texture_name, palette_name, srt = material.texture, material.palette, None
+    for animation in animations:
+        if material.name not in animation.materials:
+            continue
+        if isinstance(animation, anim.TextureSrtAnimation):
+            srt = animation.at(material.name, tick)
+        else:
+            texture_name, palette_name = animation.at(material.name, tick)
+            palette_name = palette_name or material.palette
+    return texture_name, palette_name, srt
+
+
+def meshes_from_model(model: nsbmd.Model, library: TextureLibrary, transform: np.ndarray | None = None,
+                      animations=(), tick: int | None = None, ground=None, animate: bool = False) -> list[Mesh]:
+    """Meshes for each draw.
+
+    With a tick, texture animations (SRT tracks, pattern swaps) are applied at that frame. With animate,
+    meshes whose textures animate get an animator instead, for baked playback; ground is the field's
+    ground-tile animations, which swap the texels of map textures by name.
+    """
+    from . import animation as anim
+
     meshes = []
     for draw in model.draws:
         material = model.materials[draw.material] if draw.material < len(model.materials) else nsbmd.Material('none')
-        texture = library.rgba(material.texture, material.palette)
+        texture_name, palette_name, srt = material.texture, material.palette, None
+        if tick is not None:
+            texture_name, palette_name, srt = material_state(material, animations, tick)
+        texture = library.rgba(texture_name, palette_name)
+        animated = animate and (any(material.name in a.materials for a in animations)
+                                or (ground is not None and texture_name in ground.animations))
         param = material.tex_image_param
         wrap = (bool(param & REPEAT_S), bool(param & REPEAT_T), bool(param & FLIP_S), bool(param & FLIP_T))
         positions, uvs, colours = [], [], []
@@ -86,12 +136,42 @@ def meshes_from_model(model: nsbmd.Model, library: TextureLibrary, transform: np
         if not positions:
             continue
         positions = np.array(positions)
+        uvs = np.array(uvs)
+        if srt is not None and texture is not None:
+            width = material.orig_width or texture.shape[1]
+            height = material.orig_height or texture.shape[0]
+            uvs = anim.apply_srt(uvs, srt, width, height)
         if transform is not None:
             ones = np.ones(positions.shape[:2] + (1,))
             positions = (np.concatenate([positions, ones], axis=2) @ transform)[..., :3]
-        meshes.append(Mesh(positions, np.array(uvs), np.array(colours), texture if texture is not None else WHITE,
-                           material.alpha if material.alpha > 0 else 1.0, wrap if texture is not None else (False,) * 4))
+        mesh = Mesh(positions, uvs, np.array(colours), texture if texture is not None else WHITE,
+                    material.alpha if material.alpha > 0 else 1.0, wrap if texture is not None else (False,) * 4)
+        if animated:
+            mesh.animator = make_animator(material, animations, library, ground)
+        meshes.append(mesh)
     return meshes
+
+
+def make_animator(material, animations, library: TextureLibrary, ground):
+    from . import animation as anim
+
+    def animator(tick: int):
+        texture_name, palette_name, srt = material_state(material, animations, tick)
+        texture = None
+        if ground is not None and texture_name in ground.animations and texture_name in library.textures:
+            frame = ground.animations[texture_name].frame_at(tick)
+            texture = library.ground_rgba(texture_name, palette_name, ground.animations[texture_name], frame)
+        if texture is None:
+            texture = library.rgba(texture_name, palette_name)
+        if texture is None:
+            return WHITE, None
+        if srt is None:
+            return texture, None
+        width = material.orig_width or texture.shape[1]
+        height = material.orig_height or texture.shape[0]
+        return texture, lambda uvs: anim.apply_srt(uvs, srt, width, height)
+
+    return animator
 
 
 def bounds(meshes: list[Mesh]) -> tuple[np.ndarray, np.ndarray]:

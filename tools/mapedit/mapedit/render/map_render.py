@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from .. import maps
+from . import animation
 from . import model as nsbmd
 from . import raster, scene
 
@@ -54,8 +55,28 @@ def translation(offset) -> np.ndarray:
     return m
 
 
-def render_map(repository: maps.MapRepository, header: str, view: str = 'top', size: int = 1024, props: bool = True,
-               markers: bool = False, blocks: list[str] | None = None, prop_texture_set: str | None = None) -> RenderResult:
+class Animations:
+    """Ground-tile and prop texture animations, loaded once for a run of frames."""
+
+    def __init__(self, root):
+        self.ground = animation.GroundAnimations(root)
+        self.props = animation.PropAnimations(root)
+
+
+@dataclass
+class MapScene:
+    meshes: list
+    camera: object
+    blocks: list
+    low: np.ndarray
+    high: np.ndarray
+    prop_count: int
+    missing_textures: list
+
+
+def build_scene(repository: maps.MapRepository, header: str, view: str, size: int, props: bool, blocks,
+                prop_texture_set, tick: int | None, animations: 'Animations | None', animate: bool) -> MapScene:
+    """Meshes and camera for a map. tick bakes animations in at that frame; animate attaches animators instead."""
     context = repository.context
     context.header(header)
     chosen = [b for b in context.blocks(header) if blocks is None or b.land_data in blocks]
@@ -65,6 +86,13 @@ def render_map(repository: maps.MapRepository, header: str, view: str = 'top', s
     map_set, prop_set = area_texture_sets(repository, header, prop_texture_set)
     map_textures = scene.TextureLibrary(map_set)
     prop_textures = scene.TextureLibrary(prop_set)
+    if tick is not None or animate:
+        animations = animations or Animations(repository.root)
+    if tick is not None:
+        for name, ground in animations.ground.animations.items():
+            if name in map_textures.textures:
+                map_textures.override_texels(ground.texture_at(tick))
+    ground = animations.ground if animate else None
     model_names = context.model_names()
     prop_models = {}
     meshes, prop_count = [], 0
@@ -72,7 +100,8 @@ def render_map(repository: maps.MapRepository, header: str, view: str = 'top', s
     for block in chosen:
         land = context.read_block(block)
         origin = block_origin(repository, header, block)
-        meshes += scene.meshes_from_model(nsbmd.load_model(land.model), map_textures, translation(origin))
+        meshes += scene.meshes_from_model(nsbmd.load_model(land.model), map_textures, translation(origin),
+                                          ground=ground, animate=animate)
         if not props:
             continue
         for prop in land.props:
@@ -80,9 +109,12 @@ def render_map(repository: maps.MapRepository, header: str, view: str = 'top', s
             if name not in prop_models:
                 prop_models[name] = nsbmd.load_model((repository.root / PROP_MODELS / name).read_bytes())
             transform = np.diag([s / 4096 for s in prop.scale] + [1.0]) @ translation(origin + np.array(prop.position) / 4096)
-            meshes += scene.meshes_from_model(prop_models[name], prop_textures, transform)
+            prop_animations = animations.props.for_model(name) if (tick is not None or animate) else ()
+            meshes += scene.meshes_from_model(prop_models[name], prop_textures, transform, prop_animations, tick,
+                                              animate=animate)
             prop_count += 1
 
+    low = high = None
     if view == 'top':
         # Frame the blocks' tiles exactly, so pixels line up with the tile grid.
         low = np.array([min(b.base_x for b in chosen) * TILE, 0.0, min(b.base_z for b in chosen) * TILE])
@@ -94,12 +126,53 @@ def render_map(repository: maps.MapRepository, header: str, view: str = 'top', s
     else:
         camera = scene.camera_for(meshes, view, size)
 
-    image = raster.render(meshes, camera)
-    if markers and view == 'top':
-        image = draw_markers(image, repository.load(header), chosen, low, high)
-
     missing = sorted(map_textures.missing | prop_textures.missing)
-    return RenderResult(image, [b.land_data for b in chosen], prop_count, missing)
+    return MapScene(meshes, camera, chosen, low, high, prop_count, missing)
+
+
+def render_map(repository: maps.MapRepository, header: str, view: str = 'top', size: int = 1024, props: bool = True,
+               markers: bool = False, blocks: list[str] | None = None, prop_texture_set: str | None = None,
+               tick: int | None = None, animations: 'Animations | None' = None) -> RenderResult:
+    """Renders a map; with a tick (game frames at 30 per second), texture animations are shown at that moment."""
+    built = build_scene(repository, header, view, size, props, blocks, prop_texture_set, tick, animations, animate=False)
+    image = raster.render(built.meshes, built.camera)
+    if markers and view == 'top':
+        image = draw_markers(image, repository.load(header), built.blocks, built.low, built.high)
+    return RenderResult(image, [b.land_data for b in built.blocks], built.prop_count, built.missing_textures)
+
+
+@dataclass
+class BakedMap:
+    """A map rasterised once; frame(tick) re-textures its animated surfaces, cheaply enough for live playback."""
+
+    baked: raster.Baked
+    overlay: object = None
+
+    @property
+    def animated(self) -> bool:
+        return self.baked.animated
+
+    def frame(self, tick: int) -> np.ndarray:
+        image = self.baked.frame(tick)
+        return self.overlay(image) if self.overlay else image
+
+
+def bake_map(repository: maps.MapRepository, header: str, view: str = 'top', size: int = 1024, props: bool = True,
+             markers: bool = False, blocks: list[str] | None = None, animations: 'Animations | None' = None) -> BakedMap:
+    built = build_scene(repository, header, view, size, props, blocks, None, None, animations, animate=True)
+    static = [mesh for mesh in built.meshes if mesh.animator is None]
+    animated = [mesh for mesh in built.meshes if mesh.animator is not None]
+    overlay = None
+    if markers and view == 'top':
+        view_data = repository.load(header)
+        overlay = lambda image: draw_markers(image, view_data, built.blocks, built.low, built.high)  # noqa: E731
+    return BakedMap(raster.bake(static, animated, built.camera), overlay)
+
+
+def render_frames(repository: maps.MapRepository, header: str, ticks, **options) -> list[np.ndarray]:
+    """One image per tick, from a single bake."""
+    baked = bake_map(repository, header, **options)
+    return [baked.frame(tick) for tick in ticks]
 
 
 def draw_markers(image: np.ndarray, view: maps.MapView, blocks, low: np.ndarray, high: np.ndarray) -> np.ndarray:
